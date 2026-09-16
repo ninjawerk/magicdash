@@ -48,6 +48,12 @@ export interface PluginServerContext<S = Record<string, unknown>> {
   publicUrl: () => string;
   /** Register cleanup to run on shutdown / reload. */
   onShutdown: (cb: () => void | Promise<void>) => void;
+  /**
+   * Ask every connected dashboard to switch to the first screen showing one of this plugin's tiles and hold
+   * it there (same lock rules as the widget-side API: one holder, 120 s max). Use `releaseAttention()` when done.
+   */
+  requestAttention: (reason?: string) => void;
+  releaseAttention: () => void;
 }
 
 export type ServerPluginSetup<S = Record<string, unknown>> = (

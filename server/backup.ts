@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { DashboardLayout } from '../src/sdk/types';
+import { normalizeLayout, type DashboardLayout } from '../src/sdk/types';
 import { DATA_DIR, layoutStore, settingsStore } from './storage';
 import { allPlugins, setPluginSettings } from './plugins';
 import { broadcast } from './events';
@@ -70,7 +70,7 @@ export async function createBackup(includeSecrets: boolean): Promise<Backup> {
 export function validateBackup(b: unknown): b is Backup {
   if (!b || typeof b !== 'object') return false;
   const x = b as Partial<Backup>;
-  return x.magicdash === 1 && !!x.layout && x.layout.version === 1 && Array.isArray(x.layout.widgets) && !!x.layout.grid && typeof x.settings === 'object';
+  return x.magicdash === 1 && !!x.layout && x.layout.version === 1 && (Array.isArray(x.layout.screens) || Array.isArray(x.layout.widgets)) && !!x.layout.grid && typeof x.settings === 'object';
 }
 
 export interface RestoreOptions {
@@ -81,8 +81,9 @@ export interface RestoreOptions {
 export async function restoreBackup(b: Backup, opts: RestoreOptions): Promise<{ layout: boolean; settings: string[]; files: number }> {
   const result = { layout: false, settings: [] as string[], files: 0 };
   if (opts.layout) {
-    await layoutStore.set(b.layout);
-    broadcast({ plugin: '$host', event: 'layout', payload: b.layout });
+    const layout = normalizeLayout(b.layout);
+    await layoutStore.set(layout);
+    broadcast({ plugin: '$host', event: 'layout', payload: layout });
     result.layout = true;
   }
   if (opts.settings) {

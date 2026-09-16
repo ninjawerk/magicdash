@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import os from 'node:os';
-import { SECRET_MASK, type DashboardLayout, type ConfigField } from '../src/sdk/types';
+import { SECRET_MASK, normalizeLayout, type DashboardLayout, type ConfigField } from '../src/sdk/types';
 import { addSseClient, broadcast, clientCount } from './events';
 import { allPlugins, getPlugin, getPluginSettings, loadPlugins, setPluginSettings, shutdownPlugins } from './plugins';
 import { DATA_DIR, layoutStore, settingsStore } from './storage';
@@ -64,9 +64,14 @@ async function main() {
   app.get('/api/layout', (_req, res) => res.json(layoutStore.get()));
 
   app.put('/api/layout', async (req, res) => {
-    const body = req.body as DashboardLayout;
-    if (!body || body.version !== 1 || !Array.isArray(body.widgets) || !body.grid) {
+    const raw = req.body as DashboardLayout;
+    if (!raw || raw.version !== 1 || !raw.grid || (!Array.isArray(raw.screens) && !Array.isArray(raw.widgets))) {
       res.status(400).json({ error: 'Invalid layout payload' });
+      return;
+    }
+    const body = normalizeLayout(raw);
+    if (body.screens.some((s) => !s.id || !Array.isArray(s.widgets))) {
+      res.status(400).json({ error: 'Invalid screens' });
       return;
     }
     await layoutStore.set(body);

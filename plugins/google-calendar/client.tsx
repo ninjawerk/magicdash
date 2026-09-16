@@ -18,6 +18,7 @@ interface Config {
   days?: number;
   alertSeconds?: number;
   showAllDay?: boolean;
+  grabAttention?: boolean;
   showLocation?: boolean;
   hour12?: boolean;
 }
@@ -86,7 +87,7 @@ function SettingsPanel({ api, reload }: { api: WidgetProps['api']; reload: () =>
 // ---------------------------------------------------------------------------
 type Ev = CalEvent & { s: number; e: number };
 
-function ScheduleWidget({ config, api, size, setAlert, editMode, openSettings }: WidgetProps<Config>) {
+function ScheduleWidget({ config, api, size, setAlert, editMode, openSettings, attention }: WidgetProps<Config>) {
   const now = useNow(1000);
   const nowMs = now.getTime();
   const hour12 = config.hour12 ?? false;
@@ -127,6 +128,15 @@ function ScheduleWidget({ config, api, size, setAlert, editMode, openSettings }:
   const remaining = current ? current.e - nowMs : undefined;
   const inAlert = remaining !== undefined && remaining <= alertMs;
   useEffect(() => setAlert(inAlert), [inAlert, setAlert]);
+
+  // Attention: last minute of the current event, or the 2 minutes before the next one starts.
+  const startingSoon = !!next && next.s - nowMs <= 2 * 60_000 && next.s > nowMs;
+  const wantAttention = config.grabAttention !== false && (inAlert || startingSoon);
+  useEffect(() => {
+    if (wantAttention) attention.request(inAlert ? `${current?.title} is ending` : `${next?.title} starts soon`);
+    else if (attention.held) attention.release();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantAttention, inAlert, attention.held]);
 
   // --- Empty / error states ----------------------------------------------------
   if (status.loading && !status.data) return <Center><Loader2 className="animate-spin" /></Center>;

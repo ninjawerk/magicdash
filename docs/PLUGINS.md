@@ -112,6 +112,23 @@ export default definePlugin<Config>({ manifest, Widget });
 | `openSettings()` | Open this tile's settings dialog |
 | `setAlert(bool)` | Turn the tile red & pulsing (the schedule uses it for the final minute) |
 | `setBackground(css)` | Paint the whole tile, title bar included, with a CSS background (the weather tile tints itself by conditions). Keep it translucent. |
+| `attention.request(reason?)` / `.release()` / `.held` / `.busy` | The attention lock (see below). |
+
+### Screens and the attention lock
+
+A dashboard can have several **screens** that rotate. Widgets on inactive screens stay mounted, so they keep
+polling and can still ask for attention. When something needs the user *now* (an event is ending, a door opened),
+call `attention.request('door opened')`: the dashboard switches to your tile's screen and pauses rotation.
+
+Rules the host enforces:
+
+- **One holder.** If another plugin holds the lock, `request()` returns `false`. Check `attention.busy` if you want to know in advance.
+- **120 seconds max.** The lock is released automatically after two minutes no matter what.
+- **Release early.** Call `attention.release()` as soon as the moment has passed; users hate a stuck screen.
+- **Cooldown.** After an automatic release the same holder can't re-acquire for 30 s, so a misbehaving plugin can't hog the display.
+
+Server-side plugins can do the same with `ctx.requestAttention(reason)` / `ctx.releaseAttention()`; the host picks the
+first screen that shows one of the plugin's tiles.
 | `instanceId` | Stable id of the tile |
 
 ### Hooks (from `src/sdk/client`)

@@ -49,6 +49,13 @@ const manifest: PluginManifest = {
     { key: 'days', label: 'Look ahead', type: 'number', min: 1, max: 14, default: 2, unit: 'days' },
     { key: 'alertSeconds', label: 'Alert when this much time is left', type: 'number', min: 10, max: 900, default: 60, unit: 'seconds' },
     { key: 'showAllDay', label: 'Show all-day events', type: 'boolean', default: true },
+    {
+      key: 'grabAttention',
+      label: 'Bring this screen forward when an event is about to start or end',
+      type: 'boolean',
+      default: true,
+      help: 'Uses the attention lock: switches to this tile’s screen for the last minute of an event and the 2 minutes before the next one.',
+    },
     { key: 'showLocation', label: 'Show location', type: 'boolean', default: true },
     { key: 'hour12', label: '12-hour clock', type: 'boolean', default: false },
   ],

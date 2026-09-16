@@ -1,11 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Screen } from '@sdk';
 import RGL, { type Layout } from 'react-grid-layout';
 import { useStore } from '../lib/store';
 import { WidgetShell } from './WidgetShell';
 import { getClientPlugin } from '../lib/registry';
 import { applyRects, pushDown } from '../lib/layoutUtils';
 
+/** All screens stacked; only the active one is visible. Inactive screens stay mounted so their widgets keep running. */
 export function Dashboard() {
+  const { layout, activeScreenId } = useStore();
+  if (!layout) return null;
+  return (
+    <>
+      {layout.screens.map((screen) => {
+        const active = screen.id === activeScreenId;
+        return (
+          <div
+            key={screen.id}
+            className="absolute inset-0 transition-opacity duration-500"
+            style={{ opacity: active ? 1 : 0, visibility: active ? 'visible' : 'hidden', pointerEvents: active ? 'auto' : 'none' }}
+            aria-hidden={!active}
+          >
+            <ScreenGrid screen={screen} active={active} />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
   const { layout, editMode, updateLayout, draggingRef } = useStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -28,7 +52,7 @@ export function Dashboard() {
 
   const rglLayout = useMemo<Layout[]>(
     () =>
-      (layout?.widgets ?? []).map((w) => {
+      screen.widgets.map((w) => {
         const m = getClientPlugin(w.pluginId)?.manifest;
         return {
           i: w.id,
@@ -43,7 +67,7 @@ export function Dashboard() {
           static: !editMode,
         };
       }),
-    [layout?.widgets, editMode],
+    [screen.widgets, editMode],
   );
 
   if (!layout || !grid) return null;
@@ -56,14 +80,17 @@ export function Dashboard() {
   const commit = (next: Layout[], actor: Layout) => {
     if (!editMode) return;
     updateLayout((l) => {
+      const cur = l.screens.find((s) => s.id === screen.id);
+      if (!cur) return l;
       const rects = next.map((n) => ({ id: n.i, x: n.x, y: n.y, w: n.w, h: n.h }));
       const resolved = pushDown(rects, actor.i, l.grid.rows);
       if (!resolved) {
         setBounce((b) => b + 1); // force RGL back to the stored layout
         return l;
       }
-      const widgets = applyRects(l.widgets, resolved);
-      return widgets === l.widgets || widgets.every((w, i) => w === l.widgets[i]) ? l : { ...l, widgets };
+      const widgets = applyRects(cur.widgets, resolved);
+      if (widgets.every((w, i) => w === cur.widgets[i])) return l;
+      return { ...l, screens: l.screens.map((s) => (s.id === screen.id ? { ...s, widgets } : s)) };
     });
   };
   return (
@@ -83,8 +110,8 @@ export function Dashboard() {
           compactType={null}
           preventCollision={false}
           isBounded
-          isDraggable={editMode}
-          isResizable={editMode}
+          isDraggable={editMode && active}
+          isResizable={editMode && active}
           draggableCancel=".no-drag"
           resizeHandles={['se']}
           onDragStart={() => (draggingRef.current = true)}
@@ -98,9 +125,9 @@ export function Dashboard() {
             commit(layout, item);
           }}
         >
-          {layout.widgets.map((w) => (
+          {screen.widgets.map((w) => (
             <div key={w.id}>
-              <WidgetShell widget={w} />
+              <WidgetShell widget={w} screenId={screen.id} />
             </div>
           ))}
         </RGL>

@@ -34,6 +34,13 @@ const manifest: PluginManifest = {
     },
     { key: 'controls', label: 'Allow tapping to toggle / activate', type: 'boolean', default: true },
     { key: 'showLastChanged', label: 'Show "changed x ago"', type: 'boolean', default: false },
+    {
+      key: 'attentionOn',
+      label: 'Bring this screen forward when an entity turns on / opens',
+      type: 'boolean',
+      default: false,
+      help: 'e.g. a door sensor or motion. Holds the screen for 20 seconds (attention lock).',
+    },
   ],
 };
 export default manifest;

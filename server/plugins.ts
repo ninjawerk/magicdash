@@ -112,6 +112,8 @@ export async function loadPlugins(publicUrl: () => string): Promise<LoadedPlugin
           emit: (event, payload) => broadcast({ plugin: manifest.id, event, payload }),
           publicUrl,
           onShutdown: (cb) => loaded.shutdown.push(cb),
+          requestAttention: (reason) => broadcast({ plugin: manifest.id, event: '$attention', payload: { action: 'request', reason } }),
+          releaseAttention: () => broadcast({ plugin: manifest.id, event: '$attention', payload: { action: 'release' } }),
         };
         await setup(ctx);
         loaded.hasServer = true;

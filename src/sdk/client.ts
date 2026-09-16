@@ -35,6 +35,18 @@ export interface WidgetProps<C = Record<string, unknown>> {
    * Pass `undefined` to clear. Keep it translucent so it works on every theme.
    */
   setBackground: (css: string | undefined) => void;
+  /**
+   * Attention lock. `request()` switches the dashboard to this tile's screen and pauses rotation.
+   * Returns false if another plugin already holds the lock. The host releases it after 120 s at the latest;
+   * call `release()` as soon as the moment has passed. `held` is true while this tile holds it.
+   */
+  attention: {
+    request: (reason?: string) => boolean;
+    release: () => void;
+    held: boolean;
+    /** Whether someone else currently holds the lock. */
+    busy: boolean;
+  };
 }
 
 export interface PluginApi {

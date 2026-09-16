@@ -13,6 +13,9 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 - **Tile grid.** Press `E` (or tap the pencil) to drag, resize, add and remove tiles. Every tile has its own settings.
 - **Themes.** Eleven presets — Midnight, Pure black, Nord, Dracula, Solarized, Forest, Ocean, Sunset, Rosé and two
   light ones — plus full control over background, accent, text and tile colours. Changes preview live.
+- **Screens.** Several pages of tiles that rotate every N seconds. Plugins can grab **attention** — the Schedule tile
+  pulls its screen forward for the last minute of an event and the two minutes before the next; Home Assistant can do
+  it when a door opens. One plugin at a time, two minutes at most.
 - **Edit from anywhere.** The layout lives on the server. Open the dashboard on your phone or laptop, rearrange,
   and the kiosk updates live.
 - **Plugins.** Each widget is a folder in `plugins/` with a manifest, a React component and an optional server module.

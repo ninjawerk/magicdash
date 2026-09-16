@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, FolderOpen, Loader2, PackagePlus, Settings2, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, FolderOpen, Loader2, PackagePlus, Plus, Settings2, Trash2, Upload } from 'lucide-react';
 import { subscribeEvents } from '@sdk/client';
 import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
 import { hostApi } from '../lib/api';
@@ -26,6 +26,8 @@ export function Dialogs() {
       return <BackupDialog onClose={close} />;
     case 'install':
       return <InstallPluginDialog onClose={close} />;
+    case 'screens':
+      return <ScreensDialog onClose={close} />;
     default:
       return null;
   }
@@ -84,8 +86,8 @@ function AddWidgetDialog({ onClose }: { onClose: () => void }) {
 // ---------------------------------------------------------------------------
 
 function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; onClose: () => void }) {
-  const { layout, updateWidget, apiFor, setDialog } = useStore();
-  const widget = layout?.widgets.find((w) => w.id === widgetId);
+  const { getWidget, updateWidget, apiFor, setDialog } = useStore();
+  const widget = getWidget(widgetId)?.widget;
   const plugin = widget ? getClientPlugin(widget.pluginId) : undefined;
   const [draft, setDraft] = useState<Record<string, unknown>>({ ...defaultsFor(plugin?.manifest.widgetConfig), ...(widget?.config ?? {}) });
   const [title, setTitle] = useState(widget?.title ?? '');
@@ -360,7 +362,7 @@ function BackupDialog({ onClose }: { onClose: () => void }) {
     if (!f) return;
     try {
       const data = JSON.parse(await f.text()) as BackupFile;
-      if (data?.magicdash !== 1 || !data.layout?.widgets) throw new Error('Not a MagicDash backup file.');
+      if (data?.magicdash !== 1 || !(data.layout?.screens || data.layout?.widgets)) throw new Error('Not a MagicDash backup file.');
       setFile({ name: f.name, data });
     } catch (e) {
       setFileError((e as Error).message);
@@ -437,7 +439,7 @@ function BackupDialog({ onClose }: { onClose: () => void }) {
               <div>
                 <p className="font-medium truncate">{file!.name}</p>
                 <p className="text-xs text-white/50">
-                  Exported {new Date(d.exportedAt).toLocaleString()} · {d.layout.widgets.length} tiles · {Object.keys(d.settings ?? {}).length} plugins configured ·{' '}
+                  Exported {new Date(d.exportedAt).toLocaleString()} · {d.layout.screens ? d.layout.screens.reduce((n, sc) => n + sc.widgets.length, 0) : (d.layout.widgets?.length ?? 0)} tiles · {Object.keys(d.settings ?? {}).length} plugins configured ·{' '}
                   {d.includesSecrets ? 'includes secrets' : 'no secrets (yours are kept)'}
                 </p>
               </div>
@@ -679,6 +681,89 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
             {installed.length === 0 && <li className="px-4 py-3 text-sm text-white/40">Loading…</li>}
           </ul>
           {custom.length === 0 && installed.length > 0 && <p className="mt-2 text-xs text-white/40">No custom plugins installed yet.</p>}
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function ScreensDialog({ onClose }: { onClose: () => void }) {
+  const { layout, updateLayout, addScreen, removeScreen, renameScreen, moveScreen, activeScreenId, showScreen, apiFor } = useStore();
+  const [rotation, setRotation] = useState<Record<string, unknown>>({ ...(layout?.rotation ?? {}) });
+  const api = apiFor('$host');
+  if (!layout) return null;
+  const save = () => {
+    updateLayout((l) => ({ ...l, rotation: { enabled: !!rotation.enabled, intervalSec: Math.max(3, Number(rotation.intervalSec) || 30) } }));
+    onClose();
+  };
+  return (
+    <Modal
+      title="Screens"
+      subtitle="Several pages of tiles that rotate. Plugins can pull their screen forward when something needs you."
+      onClose={onClose}
+      width={600}
+      footer={
+        <>
+          <button className="btn btn-default" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn btn-primary" onClick={save}>
+            Save
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        <section>
+          <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
+            {layout.screens.map((sc, i) => (
+              <li key={sc.id} className={`flex items-center gap-2 px-3 py-2 ${sc.id === activeScreenId ? 'bg-[var(--accent)]/10' : ''}`}>
+                <span className="w-6 text-center font-mono text-xs text-white/40">{i + 1}</span>
+                <input className="input py-1.5" value={sc.name} onChange={(e) => renameScreen(sc.id, e.target.value)} />
+                <span className="w-16 shrink-0 text-right text-xs text-white/40">{sc.widgets.length} tiles</span>
+                <button className="btn btn-ghost p-1.5" disabled={i === 0} onClick={() => moveScreen(sc.id, -1)} title="Move up">
+                  <ArrowUp size={14} />
+                </button>
+                <button className="btn btn-ghost p-1.5" disabled={i === layout.screens.length - 1} onClick={() => moveScreen(sc.id, 1)} title="Move down">
+                  <ArrowDown size={14} />
+                </button>
+                <button className="btn btn-ghost px-2 py-1.5 text-xs" onClick={() => showScreen(sc.id)} disabled={sc.id === activeScreenId}>
+                  Show
+                </button>
+                <button
+                  className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200"
+                  disabled={layout.screens.length <= 1}
+                  title="Delete screen"
+                  onClick={() => {
+                    if (sc.widgets.length === 0 || confirm(`Delete "${sc.name}" and its ${sc.widgets.length} tiles?`)) removeScreen(sc.id);
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button className="btn btn-default mt-3" onClick={() => addScreen()}>
+            <Plus size={14} /> Add screen
+          </button>
+        </section>
+        <section>
+          <h3 className="text-sm font-semibold mb-3 text-white/70">Rotation</h3>
+          <SchemaForm
+            fields={[
+              { key: 'enabled', label: 'Rotate through screens automatically', type: 'boolean', help: 'Pauses while editing, while a dialog is open, and while a plugin holds attention.' },
+              { key: 'intervalSec', label: 'Show each screen for', type: 'number', min: 3, max: 3600, unit: 'seconds', showWhen: { key: 'enabled', equals: true } },
+            ]}
+            value={rotation}
+            onChange={setRotation}
+            api={api}
+          />
+          <p className="mt-4 text-xs text-white/40">
+            Attention lock: a plugin (for example the Schedule in the last minute of an event) can bring its screen forward and hold it. Only one plugin can
+            hold it at a time, for at most 2 minutes, unless it lets go sooner.
+          </p>
         </section>
       </div>
     </Modal>

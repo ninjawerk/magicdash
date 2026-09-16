@@ -26,14 +26,29 @@ class ErrorBoundary extends Component<{ children: ReactNode; resetKey: string },
   }
 }
 
-export function WidgetShell({ widget }: { widget: WidgetInstance }) {
-  const { editMode, layout, pluginSettings, apiFor, setDialog, removeWidget } = useStore();
+export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; screenId: string }) {
+  const { editMode, layout, pluginSettings, apiFor, setDialog, removeWidget, attention: lock, requestAttention, releaseAttention } = useStore();
   const plugin = getClientPlugin(widget.pluginId);
   const ref = useRef<HTMLDivElement>(null);
   const [px, setPx] = useState({ width: 0, height: 0 });
   const [alert, setAlert] = useState(false);
   const [background, setBackground] = useState<string>();
   const openSettings = useCallback(() => setDialog({ kind: 'widget', widgetId: widget.id }), [setDialog, widget.id]);
+  const held = lock?.holder === widget.id;
+  const busy = !!lock && lock.holder !== widget.id;
+  const attention = useMemo(
+    () => ({
+      request: (reason?: string) => requestAttention(widget.id, widget.pluginId, screenId, reason),
+      release: () => releaseAttention(widget.id),
+      held,
+      busy,
+    }),
+    [requestAttention, releaseAttention, widget.id, widget.pluginId, screenId, held, busy],
+  );
+  // A removed tile must not keep the lock (ref so this only fires on real unmount).
+  const releaseRef = useRef(releaseAttention);
+  releaseRef.current = releaseAttention;
+  useEffect(() => () => releaseRef.current(widget.id), [widget.id]);
 
   useEffect(() => {
     const el = ref.current;
@@ -72,6 +87,7 @@ export function WidgetShell({ widget }: { widget: WidgetInstance }) {
               openSettings={openSettings}
               setAlert={setAlert}
               setBackground={setBackground}
+              attention={attention}
             />
           </ErrorBoundary>
         ) : (

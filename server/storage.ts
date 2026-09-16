@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import type { DashboardLayout } from '../src/sdk/types';
+import { normalizeLayout, type DashboardLayout } from '../src/sdk/types';
 
 export const DATA_DIR = path.resolve(process.env.MAGICDASH_DATA ?? 'data');
 
@@ -61,18 +61,33 @@ export function defaultLayout(): DashboardLayout {
       warm: '#ff9f68',
       preset: 'midnight',
     },
-    widgets: [
-      { id: 'w-clock', pluginId: 'clock', x: 0, y: 0, w: 4, h: 2, config: {} },
-      { id: 'w-schedule', pluginId: 'google-calendar', x: 4, y: 0, w: 8, h: 5, config: {} },
-      { id: 'w-weather', pluginId: 'weather', x: 0, y: 2, w: 4, h: 3, config: {} },
-      { id: 'w-quotes', pluginId: 'quotes', x: 0, y: 5, w: 4, h: 3, config: {} },
-      { id: 'w-image', pluginId: 'random-image', x: 4, y: 5, w: 4, h: 3, config: {} },
-      { id: 'w-ha', pluginId: 'home-assistant', x: 8, y: 5, w: 4, h: 3, config: {} },
+    rotation: { enabled: false, intervalSec: 30 },
+    screens: [
+      {
+        id: 'main',
+        name: 'Main',
+        widgets: [
+          { id: 'w-clock', pluginId: 'clock', x: 0, y: 0, w: 4, h: 2, config: {} },
+          { id: 'w-schedule', pluginId: 'google-calendar', x: 4, y: 0, w: 8, h: 5, config: {} },
+          { id: 'w-weather', pluginId: 'weather', x: 0, y: 2, w: 4, h: 3, config: {} },
+          { id: 'w-quotes', pluginId: 'quotes', x: 0, y: 5, w: 4, h: 3, config: {} },
+          { id: 'w-image', pluginId: 'random-image', x: 4, y: 5, w: 4, h: 3, config: {} },
+          { id: 'w-ha', pluginId: 'home-assistant', x: 8, y: 5, w: 4, h: 3, config: {} },
+        ],
+      },
     ],
   };
 }
 
-export const layoutStore = new JsonStore<DashboardLayout>(path.join(DATA_DIR, 'layout.json'), defaultLayout);
+class LayoutStore extends JsonStore<DashboardLayout> {
+  async load() {
+    const l = await super.load();
+    const n = normalizeLayout(l);
+    if (JSON.stringify(n) !== JSON.stringify(l)) await this.set(n); // persist the migration
+    return this.get();
+  }
+}
+export const layoutStore = new LayoutStore(path.join(DATA_DIR, 'layout.json'), defaultLayout);
 export const settingsStore = new JsonStore<Record<string, Record<string, unknown>>>(
   path.join(DATA_DIR, 'settings.json'),
   () => ({}),

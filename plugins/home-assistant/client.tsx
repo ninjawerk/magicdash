@@ -36,6 +36,7 @@ interface Config {
   layout?: 'tiles' | 'list' | 'big';
   controls?: boolean;
   showLastChanged?: boolean;
+  attentionOn?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +134,7 @@ function actionFor(s: HaState): { domain: string; service: string } | undefined 
 // ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
-function HomeAssistantWidget({ config, api, size, editMode, openSettings }: WidgetProps<Config>) {
+function HomeAssistantWidget({ config, api, size, editMode, openSettings, attention }: WidgetProps<Config>) {
   const status = usePluginQuery<HaStatus>(api, '/status', { refreshMs: 60_000 });
   const initial = usePluginQuery<HaState[]>(api, '/states', { refreshMs: 5 * 60_000 });
   const [states, setStates] = useState<Map<string, HaState>>(new Map());
@@ -143,7 +144,14 @@ function HomeAssistantWidget({ config, api, size, editMode, openSettings }: Widg
   useEffect(() => {
     if (initial.data) setStates(new Map(initial.data.map((s) => [s.entity_id, s])));
   }, [initial.data]);
+  const ACTIVE = new Set(['on', 'open', 'unlocked', 'playing', 'cleaning', 'home']);
   usePluginEvent<{ entity_id: string; state: HaState | null }>(manifest.id, 'state', ({ entity_id, state }) => {
+    if (config.attentionOn && state && (config.entities ?? []).includes(entity_id)) {
+      const prev = states.get(entity_id);
+      if (ACTIVE.has(state.state) && prev && !ACTIVE.has(prev.state) && attention.request(`${state.attributes.friendly_name ?? entity_id} is ${state.state}`)) {
+        setTimeout(() => attention.release(), 20_000);
+      }
+    }
     setStates((m) => {
       const n = new Map(m);
       state ? n.set(entity_id, state) : n.delete(entity_id);

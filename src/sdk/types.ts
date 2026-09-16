@@ -105,10 +105,47 @@ export interface GridSettings {
   padding: number;
 }
 
+/** A screen is one page of tiles. Dashboards can have several and rotate through them. */
+export interface Screen {
+  id: string;
+  name: string;
+  widgets: WidgetInstance[];
+}
+
+export interface RotationSettings {
+  enabled: boolean;
+  /** Seconds each screen stays visible. */
+  intervalSec: number;
+}
+
+/**
+ * Attention lock rules (enforced by the host):
+ *  - one holder at a time; a request while someone else holds it is refused
+ *  - held for at most ATTENTION_MAX_MS, then released automatically
+ *  - after an automatic release the same holder must wait ATTENTION_COOLDOWN_MS before asking again
+ */
+export const ATTENTION_MAX_MS = 120_000;
+export const ATTENTION_COOLDOWN_MS = 30_000;
+
+export interface AttentionLock {
+  /** Who holds it: the requesting widget's instance id (or plugin id for server-side requests). */
+  holder: string;
+  pluginId: string;
+  screenId: string;
+  since: number;
+  /** When the host will release it regardless. */
+  expiresAt: number;
+  reason?: string;
+}
+
 export interface DashboardLayout {
   version: 1;
   grid: GridSettings;
-  widgets: WidgetInstance[];
+  /** Screens in rotation order. */
+  screens: Screen[];
+  rotation: RotationSettings;
+  /** @deprecated pre-screens layouts stored tiles here; the server migrates them into screens[0]. */
+  widgets?: WidgetInstance[];
   /** Global look. */
   theme: {
     /** Background — any CSS background value. */
@@ -143,6 +180,23 @@ export interface PluginEvent<T = unknown> {
 
 /** Sentinel value that replaces stored secrets when settings are read by a browser. */
 export const SECRET_MASK = '__SECRET_SET__';
+
+/** Migrate a stored layout to the current shape (screens + rotation). Safe to call repeatedly. */
+export function normalizeLayout(raw: DashboardLayout): DashboardLayout {
+  const l: DashboardLayout = { ...raw };
+  if (!Array.isArray(l.screens) || l.screens.length === 0) {
+    l.screens = [{ id: 'main', name: 'Main', widgets: Array.isArray(l.widgets) ? l.widgets : [] }];
+  }
+  delete l.widgets;
+  const r: Partial<RotationSettings> = l.rotation ?? {};
+  l.rotation = { enabled: !!r.enabled, intervalSec: Math.max(3, Number(r.intervalSec) || 30) };
+  return l;
+}
+
+/** Every tile across all screens. */
+export function allWidgets(l: DashboardLayout): WidgetInstance[] {
+  return l.screens.flatMap((s) => s.widgets);
+}
 
 /** Utility: build a config object from field defaults. */
 export function defaultsFor(fields: ConfigField[] | undefined): Record<string, unknown> {
