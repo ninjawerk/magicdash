@@ -207,16 +207,25 @@ server.registerTool(
     return text(l.rotation);
   },
 );
-server.registerTool('show_screen', { description: 'Switch every connected dashboard to a screen now (no lock).', inputSchema: { screen: z.string() } }, async ({ screen }) =>
-  text(await api('POST', '/api/screens/show', { screenId: screen })),
+server.registerTool('show_screen', { description: 'Switch connected dashboards to a screen now (no lock). Optional deviceId/name targets one display.', inputSchema: { screen: z.string(), deviceId: z.string().optional() } }, async ({ screen, deviceId }) =>
+  text(await api('POST', '/api/screens/show', { screenId: screen, deviceId })),
+);
+server.registerTool('list_devices', { description: 'Output devices (kiosks/browsers showing the dashboard): online, ip, viewport, current screen, per-device config.', inputSchema: {} }, async () => text(await api('GET', '/api/devices')));
+server.registerTool(
+  'set_device',
+  { description: 'Rename a device or set its config: screens (ids it cycles; empty = all), rotation {enabled, intervalSec}, brightness (10-100), power (auto|on|off).', inputSchema: { id: z.string(), name: z.string().optional(), config: z.record(z.string(), z.unknown()).optional() } },
+  async ({ id, name, config }) => text(await api('PUT', `/api/devices/${id}`, { name, config })),
+);
+server.registerTool('device_action', { description: 'identify (toast on that display), reload, or show a screen on one device.', inputSchema: { id: z.string(), action: z.enum(['identify', 'reload', 'show']), screenId: z.string().optional() } }, async ({ id, action, screenId }) =>
+  text(await api('POST', `/api/devices/${id}/action`, { action, screenId })),
 );
 server.registerTool(
   'request_attention',
   {
-    description: 'Pull a screen forward and hold it (attention lock: one holder, 120 s max). Call release_attention when done.',
-    inputSchema: { screen: z.string(), reason: z.string().optional(), holder: z.string().optional() },
+    description: 'Pull a screen forward and hold it (attention lock: one holder, 120 s max). Call release_attention when done. Optional deviceId targets one display.',
+    inputSchema: { screen: z.string(), reason: z.string().optional(), holder: z.string().optional(), deviceId: z.string().optional() },
   },
-  async ({ screen, reason, holder }) => text(await api('POST', '/api/attention', { action: 'request', screenId: screen, reason, holder })),
+  async ({ screen, reason, holder, deviceId }) => text(await api('POST', '/api/attention', { action: 'request', screenId: screen, reason, holder, deviceId })),
 );
 server.registerTool('release_attention', { description: 'Release an attention lock taken via request_attention.', inputSchema: { holder: z.string().optional() } }, async ({ holder }) =>
   text(await api('POST', '/api/attention', { action: 'release', holder })),
@@ -309,7 +318,7 @@ server.registerTool('set_catalog_sources', { description: 'Replace the list of c
 );
 server.registerTool(
   'notify',
-  { description: 'Show a toast notification on every connected dashboard (e.g. "Washing machine done"). Optional screen to switch to.', inputSchema: { message: z.string(), title: z.string().optional(), level: z.enum(['info', 'success', 'warn', 'error']).optional(), durationSec: z.number().optional(), icon: z.string().optional(), screen: z.string().optional(), switchScreen: z.boolean().optional() } },
+  { description: 'Show a toast notification on every connected dashboard (e.g. "Washing machine done"), or on one device via deviceId/name. Optional screen to switch to.', inputSchema: { message: z.string(), title: z.string().optional(), level: z.enum(['info', 'success', 'warn', 'error']).optional(), durationSec: z.number().optional(), icon: z.string().optional(), screen: z.string().optional(), switchScreen: z.boolean().optional(), deviceId: z.string().optional() } },
   async (t) => text(await api('POST', '/api/notify', t)),
 );
 server.registerTool('get_display', { description: 'Display power/brightness state, schedule, presence and manual override.', inputSchema: {} }, async () => text(await api('GET', '/api/display')));

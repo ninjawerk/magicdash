@@ -164,6 +164,7 @@ kiosk's edit mode require it (sessions last 30 days per browser). Pages:
 | **Plugins** | plugin-wide settings (Google, Home Assistant, keys), catalog browse/install/update, upload, installed list |
 | **Appearance** | theme presets and colours, grid size, language |
 | **Display** | on/off, brightness, off/on schedule, presence wake via Home Assistant, night mode |
+| **Devices** | every kiosk/browser showing the dashboard: online state, IP, viewport, current screen; per device: which screens it cycles, rotation, brightness, forced off; identify / reload / show-screen actions |
 | **Backup** | export / import |
 | **Logs** | live tail of the server and plugin logs with level filter and download |
 | **Updates** | compares your checkout with the remote and the latest release; **Update now** runs `git pull`, `npm ci`, `npm run build` and restarts |
@@ -187,6 +188,9 @@ commands). Without them the kiosk dims in software and shows a black screen, whi
 ```bash
 curl -X POST http://<pi>:3210/api/display -H 'Authorization: Bearer md_…' -H 'content-type: application/json' -d '{"on":false}'
 ```
+
+**Devices**: a kiosk identifies itself with `?device=<name>` in its URL (the install script uses the hostname). Target one display
+by adding `"deviceId": "kitchen"` to `/api/screens/show`, `/api/notify` or `/api/attention`; omit it to reach every display.
 
 **Toasts**: `POST /api/notify` with `message`, optional `title`, `level` (info/success/warn/error), `durationSec`, `icon`,
 `screen` + `switchScreen`. No token needed, max 30 per minute. Plugins can call `ctx.notify()` (server) or `props.notify()`.

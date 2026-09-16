@@ -42,7 +42,7 @@ export function Toasts() {
  * when there's no hardware backlight. Also switches the theme preset during night mode.
  */
 export function DisplayLayer() {
-  const { display, wakeDisplay, layout } = useStore();
+  const { display, wakeDisplay, layout, device } = useStore();
   const t = useT('host');
   const night = layout?.night;
   const nightActive = useMemo(() => !!night?.enabled && inWindow({ from: night.from, to: night.to }, new Date()), [night]);
@@ -61,11 +61,15 @@ export function DisplayLayer() {
     applyTheme(base);
   }, [nightActive, night?.preset, layout]);
 
-  const softwareDim = display && !display.hardware.backlight && display.brightness < 100 && display.on;
+  // Per-device overrides from the admin Devices page win over the dashboard-wide display state.
+  const power = device.config.power ?? 'auto';
+  const on = power === 'off' ? false : power === 'on' ? true : (display?.on ?? true);
+  const brightness = device.config.brightness ?? display?.brightness ?? 100;
+  const softwareDim = on && brightness < 100 && (!display?.hardware.backlight || device.config.brightness !== undefined);
   return (
     <>
-      {softwareDim && <div className="pointer-events-none fixed inset-0 z-[80] bg-black transition-opacity duration-1000" style={{ opacity: 1 - display!.brightness / 100 }} />}
-      {display && !display.on && (
+      {softwareDim && <div className="pointer-events-none fixed inset-0 z-[80] bg-black transition-opacity duration-1000" style={{ opacity: 1 - brightness / 100 }} />}
+      {!on && (
         <div className="fixed inset-0 z-[95] flex cursor-pointer items-end justify-center bg-black p-8" onClick={wakeDisplay} onTouchStart={wakeDisplay}>
           <span className="text-xs text-white/20">{t('display.off')}</span>
         </div>

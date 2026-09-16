@@ -141,6 +141,7 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['POST', /^\/api\/notify$/],
   ['GET', /^\/api\/display$/],
   ['GET', /^\/api\/geocode$/],
+  ['POST', /^\/api\/devices\/heartbeat$/],
 ];
 export function isPublic(req: Request): boolean {
   return PUBLIC.some(([m, re]) => (m === '*' || m === req.method) && re.test(req.path));

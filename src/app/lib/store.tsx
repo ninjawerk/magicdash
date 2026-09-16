@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AttentionLock, DashboardLayout, DisplayState, Screen, Toast, WidgetInstance } from '@sdk';
+import type { AttentionLock, DashboardLayout, DeviceConfig, DisplayState, Screen, Toast, WidgetInstance } from '@sdk';
 import { inWindow } from '@sdk';
 import { setLocale } from '@sdk/i18n';
 import { ATTENTION_COOLDOWN_MS, ATTENTION_MAX_MS, allWidgets, defaultsFor, normalizeLayout } from '@sdk';
@@ -62,6 +62,8 @@ interface Store {
   notify: (t: { message: string; title?: string; level?: Toast['level']; durationSec?: number; icon?: string }) => void;
   display: DisplayState | null;
   wakeDisplay: () => void;
+  /** This browser's device identity and per-device config (from the admin Devices page). */
+  device: { id: string; name: string; config: DeviceConfig };
   /** Screens currently allowed by their schedule. */
   visibleScreens: Screen[];
 
@@ -97,9 +99,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [dialog, setDialog] = useState<DialogState>({ kind: 'none' });
   const [pluginSettings, setPluginSettings] = useState<Record<string, Record<string, unknown>>>({});
   const [activeScreenId, setActiveScreenId] = useState('main');
+  const activeScreenRef = useRef('main');
+  activeScreenRef.current = activeScreenId;
   const [attention, setAttention] = useState<AttentionLock | null>(null);
   const [auth, setAuth] = useState<AuthState>({ configured: false, authenticated: false, loaded: false });
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // --- Device identity: ?device=<id> pins it (kiosks), otherwise a generated id kept in localStorage.
+  const [device, setDeviceState] = useState<{ id: string; name: string; config: DeviceConfig }>(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get('device')?.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+    let id = fromUrl || '';
+    try {
+      if (!id) id = localStorage.getItem('magicdash.deviceId') || '';
+      if (!id) {
+        id = `dev-${Math.random().toString(36).slice(2, 8)}`;
+        localStorage.setItem('magicdash.deviceId', id);
+      }
+    } catch {
+      if (!id) id = `dev-${Math.random().toString(36).slice(2, 8)}`;
+    }
+    return { id, name: id, config: {} };
+  });
+  const deviceRef = useRef(device);
+  deviceRef.current = device;
+  const isAdminPage = window.location.pathname.startsWith('/admin');
+  useEffect(() => {
+    if (isAdminPage) return; // the admin panel is not a display
+    let stop = false;
+    const beat = async () => {
+      try {
+        const r = await fetch('/api/devices/heartbeat', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: deviceRef.current.id, name: deviceRef.current.name, screen: activeScreenRef.current, viewport: { width: window.innerWidth || document.documentElement.clientWidth, height: window.innerHeight || document.documentElement.clientHeight }, version: __APP_VERSION__ }),
+        });
+        if (!r.ok || stop) return;
+        const j = (await r.json()) as { name: string; config: DeviceConfig };
+        setDeviceState((d) => (JSON.stringify([d.name, d.config]) === JSON.stringify([j.name, j.config]) ? d : { ...d, name: j.name, config: j.config ?? {} }));
+      } catch {
+        /* offline; retry next beat */
+      }
+    };
+    beat();
+    const id = setInterval(beat, 30_000);
+    return () => {
+      stop = true;
+      clearInterval(id);
+    };
+  }, [isAdminPage]);
+  /** Does a host event addressed to a device apply to us? */
+  const forUs = (payload: unknown) => {
+    const target = (payload as { deviceId?: string })?.deviceId;
+    return !target || target === deviceRef.current.id || target.toLowerCase() === deviceRef.current.name.toLowerCase();
+  };
   const [display, setDisplay] = useState<DisplayState | null>(null);
   const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000));
   useEffect(() => {
@@ -133,10 +184,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => setLocale(layout?.locale), [layout?.locale]);
   const visibleScreens = useMemo(() => {
     const now = new Date(minute * 60_000);
-    const all = layout?.screens ?? [];
+    let all = layout?.screens ?? [];
+    const subset = device.config.screens;
+    if (subset && subset.length) {
+      const picked = all.filter((s) => subset.includes(s.id));
+      if (picked.length) all = picked;
+    }
     const ok = all.filter((s) => inWindow(s.schedule, now));
     return ok.length ? ok : all.slice(0, 1);
-  }, [layout?.screens, minute]);
+  }, [layout?.screens, minute, device.config.screens]);
 
   const refreshAuth = useCallback(async () => {
     const st = await hostApi.authStatus().catch(() => ({ configured: false, authenticated: false }));
@@ -374,7 +430,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const releaseAttentionPublic = useCallback((holder: string) => releaseAttention(holder, false), [releaseAttention]);
 
   // --- Rotation timer ------------------------------------------------------------------
-  const rotationOn = !!layout?.rotation.enabled && visibleScreens.length > 1 && !editMode && dialog.kind === 'none' && !attention;
+  const rotationCfg = device.config.rotation ?? layout?.rotation;
+  const rotationOn = !!rotationCfg?.enabled && visibleScreens.length > 1 && !editMode && dialog.kind === 'none' && !attention;
   const visibleRef = useRef(visibleScreens);
   visibleRef.current = visibleScreens;
   // If the active screen is scheduled out (and we're not editing), move to the first visible one.
@@ -382,7 +439,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (editMode || attention) return;
     if (!visibleScreens.some((s) => s.id === activeScreenId) && visibleScreens[0]) setActiveScreenId(visibleScreens[0].id);
   }, [visibleScreens, activeScreenId, editMode, attention]);
-  const intervalSec = layout?.rotation.intervalSec ?? 30;
+  const intervalSec = rotationCfg?.intervalSec ?? 30;
   useEffect(() => {
     if (!rotationOn) return;
     const id = setInterval(() => {
@@ -414,8 +471,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (ev.plugin !== '$host') return;
+      if (ev.event === 'device') {
+        const p = ev.payload as { deviceId: string; name?: string; config?: DeviceConfig; forgotten?: boolean };
+        if (p.deviceId === deviceRef.current.id && !p.forgotten) setDeviceState((d) => ({ ...d, name: p.name ?? d.name, config: p.config ?? {} }));
+        return;
+      }
+      if (ev.event === 'reload') {
+        if (forUs(ev.payload) && !isAdminPage) window.location.reload();
+        return;
+      }
       if (ev.event === 'notify') {
         const t = ev.payload as Toast;
+        if (!forUs(t)) return;
         if (t.screen) {
           const l = layoutRef.current;
           const sc = l?.screens.find((s) => s.id === t.screen || s.name.toLowerCase() === t.screen!.toLowerCase());
@@ -430,10 +497,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
       if (ev.event === 'showScreen') {
         const { screenId } = ev.payload as { screenId: string };
-        if (!attentionRef.current) showScreen(screenId);
+        if (forUs(ev.payload) && !attentionRef.current) showScreen(screenId);
         return;
       }
       if (ev.event === 'attention') {
+        if (!forUs(ev.payload)) return;
         const { action, screenId, holder, reason } = ev.payload as { action: string; screenId?: string; holder: string; reason?: string };
         if (action === 'release') releaseAttention(holder);
         else if (screenId) requestAttention(holder, 'api', screenId, reason);
@@ -486,6 +554,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       notify,
       display,
       wakeDisplay,
+      device,
       visibleScreens,
       attention,
       requestAttention,
@@ -520,6 +589,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       notify,
       display,
       wakeDisplay,
+      device,
       visibleScreens,
       attention,
       requestAttention,
@@ -529,8 +599,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Debug aid: inspect host state from the browser console.
   useEffect(() => {
-    (window as unknown as { __magicdash?: unknown }).__magicdash = { attention, activeScreenId, screens: layout?.screens.map((s) => s.id), rotation: layout?.rotation, rotationOn, editMode, dialog: dialog.kind };
-  }, [attention, activeScreenId, layout, rotationOn, editMode, dialog.kind]);
+    (window as unknown as { __magicdash?: unknown }).__magicdash = { attention, activeScreenId, screens: layout?.screens.map((s) => s.id), visible: visibleScreens.map((s) => s.id), rotation: rotationCfg, rotationOn, editMode, dialog: dialog.kind, device };
+  }, [attention, activeScreenId, layout, rotationOn, editMode, dialog.kind, device, visibleScreens, rotationCfg]);
 
   void allWidgets;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

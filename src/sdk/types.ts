@@ -264,7 +264,17 @@ export interface Toast {
   /** Show only on this screen (id or name); switches to it when `switchScreen` is set. */
   screen?: string;
   switchScreen?: boolean;
+  /** Only this device shows it (id or name); empty = every display. */
+  deviceId?: string;
   at: string;
+}
+
+/** Per-device configuration, applied by the kiosk that owns the id. */
+export interface DeviceConfig {
+  screens?: string[];
+  rotation?: { enabled: boolean; intervalSec: number };
+  brightness?: number;
+  power?: 'auto' | 'on' | 'off';
 }
 
 /** Display power / brightness state (host event `$host/display`). */

@@ -38,7 +38,7 @@ export function OverviewPage({ go }: { go: (r: Route) => void }) {
         <Stat icon={<Layers size={16} />} label="Screens" value={String(layout?.screens.length ?? 0)} onClick={() => go('screens')} />
         <Stat icon={<Monitor size={16} />} label="Tiles" value={String(tiles)} onClick={() => go('layout')} />
         <Stat icon={<Puzzle size={16} />} label="Plugins" value={String(listClientPlugins().length)} onClick={() => go('plugins')} />
-        <Stat icon={<Monitor size={16} />} label="Connected displays" value={String(Math.max(0, (health?.clients ?? 1) - 1))} hint="other than this browser" />
+        <Stat icon={<Monitor size={16} />} label="Connected displays" value={String(Math.max(0, (health?.clients ?? 1) - 1))} hint="other than this browser" onClick={() => go('devices')} />
       </div>
       <section className="surface rounded-2xl border border-white/10 p-5">
         <h2 className="mb-4 text-sm font-semibold text-white/70">This device</h2>

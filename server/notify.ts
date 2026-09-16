@@ -3,12 +3,14 @@ import { randomBytes } from 'node:crypto';
 import type { Express } from 'express';
 import type { Toast } from '../src/sdk/types';
 import { broadcast } from './events';
+import { resolveDeviceId } from './devices';
 
 const recent: number[] = [];
 const LIMIT_PER_MIN = 30;
 
-export function notify(input: Partial<Toast> & { message: string }): Toast {
+export function notify(input: Partial<Toast> & { message: string; deviceId?: string }): Toast {
   const toast: Toast = {
+    deviceId: resolveDeviceId(input.deviceId),
     id: randomBytes(6).toString('hex'),
     message: String(input.message).slice(0, 500),
     title: input.title ? String(input.title).slice(0, 80) : undefined,
