@@ -156,6 +156,27 @@ export interface Screen {
   schedule?: TimeWindow;
 }
 
+/** A place on Earth, as picked in the dashboard settings or a tile. */
+export interface GeoLocation {
+  name: string;
+  country?: string;
+  admin?: string;
+  lat: number;
+  lon: number;
+  timezone?: string;
+}
+
+/**
+ * Facts about this dashboard that every widget receives as `props.context`: where it is, whose it is, which units.
+ * Set under Appearance → Dashboard. Plugins should use these as defaults and let a tile override them.
+ */
+export interface DashboardContext {
+  location?: GeoLocation;
+  /** The person's name for greetings. */
+  name?: string;
+  units?: 'metric' | 'imperial';
+}
+
 /** Dashboard-wide night mode: dim and optionally switch theme preset during a window. */
 export interface NightMode {
   enabled: boolean;
@@ -202,6 +223,7 @@ export interface DashboardLayout {
   /** BCP-47 locale for host + plugin strings and date formatting, e.g. "en-GB", "de". Empty = browser default. */
   locale?: string;
   night?: NightMode;
+  context?: DashboardContext;
   /** @deprecated pre-screens layouts stored tiles here; the server migrates them into screens[0]. */
   widgets?: WidgetInstance[];
   /** Global look. */
@@ -275,6 +297,7 @@ export function normalizeLayout(raw: DashboardLayout): DashboardLayout {
   const r: Partial<RotationSettings> = l.rotation ?? {};
   l.rotation = { enabled: !!r.enabled, intervalSec: Math.max(3, Number(r.intervalSec) || 30) };
   l.night = { enabled: false, from: '23:00', to: '06:30', brightness: 30, ...(l.night ?? {}) };
+  l.context = { ...(l.context ?? {}) };
   return l;
 }
 

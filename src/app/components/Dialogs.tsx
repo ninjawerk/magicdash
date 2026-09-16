@@ -8,6 +8,8 @@ import { useStore } from '../lib/store';
 import { Modal } from './Modal';
 import { SchemaForm } from './SchemaForm';
 import { THEME_PRESETS, applyTheme, normalizeTheme, stripPreset, type Theme } from '../lib/themes';
+import { LocationPicker } from './LocationPicker';
+import type { DashboardContext } from '@sdk';
 import { Check } from 'lucide-react';
 
 export function Dialogs() {
@@ -316,6 +318,7 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
   const [theme, setTheme] = useState<Record<string, unknown>>({ ...original });
   const [grid, setGrid] = useState<Record<string, unknown>>({ ...(layout?.grid ?? {}) });
   const [loc, setLoc] = useState<Record<string, unknown>>({ locale: layout?.locale ?? '' });
+  const [ctx, setCtx] = useState<DashboardContext>({ ...(layout?.context ?? {}) });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const api = apiFor('$host');
 
@@ -342,6 +345,7 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
       theme: normalizeTheme({ ...l.theme, ...(theme as unknown as DashboardLayout['theme']) }),
       grid: { ...l.grid, ...(grid as unknown as DashboardLayout['grid']) },
       locale: (loc.locale as string) || undefined,
+      context: { ...ctx, name: ctx.name?.trim() || undefined },
     }));
     onClose();
   };
@@ -387,6 +391,27 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Grid</h3>
           <SchemaForm fields={GRID_FIELDS} value={grid} onChange={setGrid} api={api} />
+        </section>
+        <section>
+          <h3 className="text-sm font-semibold mb-1 text-white/70">Dashboard</h3>
+          <p className="mb-3 text-xs text-white/45">Shared with every tile: plugins use these unless a tile sets its own (weather, Rahu Kaala, greetings…).</p>
+          <div className="space-y-4">
+            <div>
+              <label className="label">Location</label>
+              <LocationPicker value={ctx.location} onChange={(location) => setCtx({ ...ctx, location })} />
+            </div>
+            <div>
+              <label className="label">Your name</label>
+              <input className="input" placeholder="e.g. Deshan" value={ctx.name ?? ''} onChange={(e) => setCtx({ ...ctx, name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Units</label>
+              <select className="input" value={ctx.units ?? 'metric'} onChange={(e) => setCtx({ ...ctx, units: e.target.value as DashboardContext['units'] })}>
+                <option value="metric">Metric (°C, km/h)</option>
+                <option value="imperial">Imperial (°F, mph)</option>
+              </select>
+            </div>
+          </div>
         </section>
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Language</h3>

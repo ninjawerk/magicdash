@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
-import type { PluginEvent, PluginManifest, SelectOption } from './types';
+import type { DashboardContext, PluginEvent, PluginManifest, SelectOption } from './types';
 
 export * from './types';
 export * from './bus';
@@ -20,6 +20,8 @@ export interface WidgetProps<C = Record<string, unknown>> {
   config: C;
   /** Plugin-wide settings with secrets masked (see manifest.settings). */
   settings: Record<string, unknown>;
+  /** Dashboard-wide facts (location, name, units) — use as defaults, let the tile override. */
+  context: DashboardContext;
   /** Current tile size in grid units and pixels. */
   size: { w: number; h: number; width: number; height: number };
   /** True while the user is arranging the dashboard. */

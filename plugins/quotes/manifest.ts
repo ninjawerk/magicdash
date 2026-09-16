@@ -24,7 +24,7 @@ const manifest: PluginManifest = {
         { label: 'ZenQuotes.io (online)', value: 'zenquotes' },
       ],
     },
-    { key: 'name', label: 'Your name', type: 'string', placeholder: 'e.g. Deshan', showWhen: { key: 'source', equals: 'greeting' }, help: '“Good morning, Deshan”. Leave empty for no name.' },
+    { key: 'name', label: 'Your name', type: 'string', placeholder: 'e.g. Deshan', showWhen: { key: 'source', equals: 'greeting' }, help: '“Good morning, Deshan”. Leave empty to use the dashboard name (Appearance → Dashboard).' },
     { key: 'weatherHints', label: 'Add weather hints (umbrella, sunscreen…) when a weather tile is on the dashboard', type: 'boolean', default: true, showWhen: { key: 'source', equals: 'greeting' } },
     { key: 'calendarHints', label: 'Mention the next calendar event when it is close', type: 'boolean', default: true, showWhen: { key: 'source', equals: 'greeting' } },
     {

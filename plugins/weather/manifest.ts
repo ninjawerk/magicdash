@@ -12,13 +12,13 @@ const manifest: PluginManifest = {
   defaultSize: { w: 4, h: 3 },
   minSize: { w: 2, h: 2 },
   widgetConfig: [
-    { key: 'location', label: 'Location', type: 'custom', help: 'Search for a city or type coordinates.' },
+    { key: 'location', label: 'Location', type: 'custom', help: 'Leave empty to use the dashboard location (Appearance → Dashboard).' },
     {
       key: 'units',
       label: 'Units',
       type: 'select',
-      default: 'metric',
       options: [
+        { label: 'Dashboard default', value: '' },
         { label: 'Metric (°C, km/h, mm)', value: 'metric' },
         { label: 'Imperial (°F, mph, in)', value: 'imperial' },
       ],

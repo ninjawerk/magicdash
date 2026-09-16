@@ -21,3 +21,4 @@ plugins/*
 !plugins/news/
 !plugins/word-of-the-day/
 !plugins/qr-code/
+!plugins/rahu-kaala/

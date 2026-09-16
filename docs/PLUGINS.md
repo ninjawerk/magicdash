@@ -107,6 +107,7 @@ export default definePlugin<Config>({ manifest, Widget });
 | --- | --- |
 | `config` | This tile's config, with manifest defaults already applied |
 | `settings` | Plugin-wide settings, secrets masked as `SECRET_MASK` |
+| `context` | Dashboard-wide facts: `{ location?, name?, units? }` (Appearance → Dashboard). Use as defaults; let the tile override. |
 | `size` | `{ w, h }` in grid units and `{ width, height }` in px — scale your type to it |
 | `editMode` | True while the user is arranging tiles; disable click actions then |
 | `api` | `api.get(path, query)`, `api.post(path, body)`, `api.url(path)` — bound to your router |
@@ -156,6 +157,12 @@ first screen that shows one of the plugin's tiles.
 - `publish` / `useTopic` / `useSubscribe` — inter-plugin bus; `useT(pluginId)` — translations
 - `useRotation(length, intervalMs, { random })` — cycle an index (slideshows, quotes)
 - `formatDuration(ms, { seconds })`, `formatTime(date, { hour12 })`, `classNames(...)`
+
+### Location fields
+
+For a per-tile location, declare `{ type: 'custom', key: 'location' }` and reuse the host picker:
+`import { LocationPicker } from '../../src/app/components/LocationPicker'` (backed by `GET /api/geocode`). Fall back to
+`props.context.location` when the tile has none — see `plugins/rahu-kaala`.
 
 ### Custom field editors
 

@@ -16,14 +16,14 @@ interface Config {
 }
 
 /** Time of day + weather + calendar aware greeting, MagicMirror "compliments" style. */
-function GreetingWidget({ config, size }: WidgetProps<Config>) {
+function GreetingWidget({ config, size, context }: WidgetProps<Config>) {
   const t = useT(manifest.id);
   const now = useNow(30_000);
   const weather = useTopic<WeatherCurrentTopic>('weather:current');
   const next = useTopic<CalendarNextTopic>('calendar:next');
   const h = now.getHours();
   const period = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 22 ? 'evening' : 'night';
-  const name = config.name?.trim();
+  const name = config.name?.trim() || context.name?.trim();
   const greeting = t(`greet.${period}`) + (name ? `, ${name}` : '');
 
   const lines = useMemo(() => {

@@ -81,6 +81,7 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
               instanceId={widget.id}
               config={config}
               settings={pluginSettings[widget.pluginId] ?? {}}
+              context={layout?.context ?? {}}
               size={{ w: widget.w, h: widget.h, ...px }}
               editMode={editMode}
               api={apiFor(widget.pluginId)}
