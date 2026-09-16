@@ -22,8 +22,8 @@ interface BaseField {
   label: string;
   /** Help text rendered under the input. */
   help?: string;
-  /** Show this field only when another field has a given value. */
-  showWhen?: { key: string; equals: unknown };
+  /** Show this field only when another field equals a value (or one of several). */
+  showWhen?: { key: string; equals?: unknown; oneOf?: unknown[] };
 }
 
 /**

@@ -3,8 +3,17 @@ import { ImageOff } from 'lucide-react';
 import { definePlugin, usePluginQuery, type WidgetProps } from '../../src/sdk/client';
 import manifest from './manifest';
 
+const PROVIDER_SOURCES = ['picsum', 'loremflickr', 'wikimedia', 'nasa', 'cleveland', 'unsplash', 'pexels', 'pixabay'];
+
+interface ProviderImage {
+  src: string;
+  caption?: string;
+  link?: string;
+}
+
 interface Config {
-  source?: 'picsum' | 'folder' | 'urls';
+  source?: string;
+  subject?: string;
   urls?: string[];
   subfolder?: string;
   intervalSec?: number;
@@ -23,13 +32,23 @@ function shuffled<T>(arr: T[]): T[] {
   return a;
 }
 
-function RandomImageWidget({ config, api, size, instanceId }: WidgetProps<Config>) {
+function RandomImageWidget({ config, api, size }: WidgetProps<Config>) {
   const source = config.source ?? 'picsum';
   const interval = Math.max(3, config.intervalSec ?? 60) * 1000;
   const files = usePluginQuery<string[]>(api, '/list', {
     enabled: source === 'folder',
     query: { filter: config.subfolder || undefined },
     refreshMs: 10 * 60 * 1000,
+  });
+  const isProvider = PROVIDER_SOURCES.includes(source);
+  // Ask for roughly the tile's size in device pixels (rounded so the cache key is stable across tiny resizes).
+  const dpr = window.devicePixelRatio || 1;
+  const reqW = Math.max(400, Math.round((size.width * dpr) / 200) * 200);
+  const reqH = Math.max(300, Math.round((size.height * dpr) / 200) * 200);
+  const provided = usePluginQuery<ProviderImage[]>(api, '/images', {
+    enabled: isProvider && size.width > 0,
+    query: { provider: source, subject: config.subject?.trim() || undefined, count: 30, w: reqW, h: reqH },
+    refreshMs: 30 * 60 * 1000,
   });
 
   const [tick, setTick] = useState(0);
@@ -42,18 +61,14 @@ function RandomImageWidget({ config, api, size, instanceId }: WidgetProps<Config
     let items: Array<{ src: string; caption?: string }> = [];
     if (source === 'urls') items = (config.urls ?? []).filter(Boolean).map((u) => ({ src: u }));
     if (source === 'folder') items = (files.data ?? []).map((p) => ({ src: api.url('/file', { p }), caption: p }));
+    if (isProvider) items = provided.data ?? [];
     return config.shuffle === false ? items : shuffled(items);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, config.urls, files.data, config.shuffle]);
+  }, [source, config.urls, files.data, provided.data, config.shuffle]);
 
   let src: string | undefined;
   let caption: string | undefined;
-  if (source === 'picsum') {
-    // Ask for roughly the tile's size in device pixels; seed changes each tick so the browser can't cache it.
-    const w = Math.max(200, Math.round(size.width * (window.devicePixelRatio || 1)));
-    const h = Math.max(200, Math.round(size.height * (window.devicePixelRatio || 1)));
-    src = `https://picsum.photos/seed/${instanceId}-${tick}/${w}/${h}`;
-  } else if (list.length) {
+  if (list.length) {
     const item = list[tick % list.length];
     src = item.src;
     caption = item.caption;
@@ -67,7 +82,11 @@ function RandomImageWidget({ config, api, size, instanceId }: WidgetProps<Config
       <div className="flex h-full flex-col items-center justify-center gap-2 text-white/40 p-4 text-center">
         <ImageOff />
         <p className="text-sm">
-          {source === 'folder' ? files.error ?? (files.loading ? 'Scanning folder…' : 'No images found in the folder.') : 'Add some image URLs in this tile’s settings.'}
+          {source === 'folder'
+            ? files.error ?? (files.loading ? 'Scanning folder…' : 'No images found in the folder.')
+            : isProvider
+              ? provided.error ?? (provided.loading ? 'Finding pictures…' : 'No pictures found.')
+              : 'Add some image URLs in this tile’s settings.'}
         </p>
       </div>
     );

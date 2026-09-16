@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { asyncHandler, defineServerPlugin } from '../../src/sdk/server';
+import { PROVIDERS, fetchImages } from './providers';
 
 const EXT = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.avif', '.bmp']);
 
@@ -20,13 +21,44 @@ async function walk(dir: string, base: string, out: string[], depth = 0): Promis
   }
 }
 
-export default defineServerPlugin<{ folder?: string }>((ctx) => {
+interface Settings {
+  folder?: string;
+  unsplashKey?: string;
+  pexelsKey?: string;
+  pixabayKey?: string;
+}
+
+export default defineServerPlugin<Settings>((ctx) => {
   const folder = () => {
     const f = ctx.settings.get().folder?.trim();
     return f ? path.resolve(f) : undefined;
   };
 
   ctx.settings.onChange(() => ctx.cache.delete('list'));
+
+  ctx.router.get('/providers', (_req, res) => res.json(PROVIDERS));
+
+  /** GET /images?provider=wikimedia&subject=cats&count=30&w=1600&h=900 → ProviderImage[] (cached 30 min) */
+  ctx.router.get(
+    '/images',
+    asyncHandler(async (req, res) => {
+      const provider = String(req.query.provider ?? 'picsum');
+      const subject = String(req.query.subject ?? '').slice(0, 100);
+      const count = Number(req.query.count ?? 30);
+      const w = Math.max(200, Math.min(3840, Number(req.query.w ?? 1600)));
+      const h = Math.max(200, Math.min(2160, Number(req.query.h ?? 900)));
+      const s = ctx.settings.get();
+      const key = `img:${provider}:${subject.toLowerCase()}:${count}:${w}x${h}`;
+      const images = await ctx.cache.wrap(key, 30 * 60_000, () =>
+        fetchImages(provider, subject, count, { unsplashKey: s.unsplashKey, pexelsKey: s.pexelsKey, pixabayKey: s.pixabayKey }, { w, h }),
+      );
+      if (images.length === 0) {
+        res.status(404).json({ error: `No images found for “${subject || 'default'}” on ${provider}.` });
+        return;
+      }
+      res.json(images);
+    }),
+  );
 
   /** GET /list?filter=holidays → ["a.jpg", "sub/b.png", ...] */
   ctx.router.get(

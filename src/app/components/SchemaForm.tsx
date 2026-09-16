@@ -18,7 +18,12 @@ export function SchemaForm({
   customFields?: Record<string, ComponentType<CustomFieldProps>>;
 }) {
   const set = (key: string, v: unknown) => onChange({ ...value, [key]: v });
-  const visible = fields.filter((f) => !f.showWhen || value[f.showWhen.key] === f.showWhen.equals);
+  const visible = fields.filter((f) => {
+    if (!f.showWhen) return true;
+    const v = value[f.showWhen.key];
+    if (f.showWhen.oneOf) return f.showWhen.oneOf.includes(v);
+    return v === f.showWhen.equals;
+  });
   if (visible.length === 0) return <p className="text-sm text-white/40">Nothing to configure.</p>;
   return (
     <div className="space-y-5">

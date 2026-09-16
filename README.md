@@ -26,7 +26,7 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 | 📅 **Schedule (Google Calendar)** | Now / next / countdown, agenda mode, multiple calendars, red pulse in the final minute. Google OAuth **or** any ICS feed (Google secret address, iCloud, Outlook, Nextcloud). |
 | ⛅ **Weather** | Current conditions, next hours, 7-day forecast with icons. Uses Open-Meteo — no API key. |
 | 🏠 **Home Assistant** | Live entity states over websocket, tap to toggle lights/switches/covers/locks, tiles / list / big-value layouts. |
-| 🖼️ **Random image** | Slideshow from a folder on the Pi, a list of URLs, or random photos. Ken Burns effect. |
+| 🖼️ **Random image** | Slideshow by subject from free providers (Wikimedia Commons, NASA, Cleveland Museum of Art, LoremFlickr — no key; Unsplash, Pexels, Pixabay with a free key), a folder on the Pi, or your own URLs. Ken Burns effect. |
 | 💬 **Motivational quotes** | Bundled offline set, your own list, or ZenQuotes. |
 | 🕰️ **Clock** | Big time & date, optional seconds / time zone. |
 
@@ -202,8 +202,11 @@ Tapping a light, switch, cover, lock, scene or script acts on it; disable this p
 
 ### Random image
 
-To use photos on the Pi, set the folder in *Plugins → Random image* (e.g. `/home/pi/Pictures`), then choose
-*Folder on the server* in the tile.
+Per tile, pick a source and type a **subject** (e.g. `mountains`, `van gogh`, `nebula`). Wikimedia Commons,
+NASA, the Cleveland Museum of Art and LoremFlickr need no key. Unsplash, Pexels and Pixabay need a free API key,
+entered once under *Plugins → Random image*. Results are cached on the server for 30 minutes so a tile never
+hammers a provider. To show your own photos, set the folder in *Plugins → Random image* (e.g. `/home/pi/Pictures`),
+then choose *Folder on the server* in the tile.
 
 ## Project layout
 
