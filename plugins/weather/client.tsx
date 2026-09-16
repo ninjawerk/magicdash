@@ -191,13 +191,13 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
   const headerH = compact ? 70 : 92;
   const showChips = config.showDetails !== false && !compact && W >= 300 && H >= headerH + 34 + 60;
   let remaining = H - 16 - headerH - (showChips ? 42 : 0);
-  const showHourly = config.showHourly !== false && remaining >= 86 + (days > 0 ? 80 : 0) && W >= 260;
+  const ROW_H = 30;
+  // Daily forecast is always a list of rows with range bars (columns were hard to read). Hourly only fits
+  // when it still leaves room for at least three day rows.
+  const showHourly = config.showHourly !== false && W >= 260 && remaining >= 94 + (days > 0 ? ROW_H * 3 : 0);
   if (showHourly) remaining -= 94;
-  const showDaily = days > 0 && remaining >= 60;
-  // Tall tiles list days as rows with range bars; wide/short tiles use columns.
-  const dailyAsRows = showDaily && remaining >= 34 * 3 && H > W * 0.55;
-  const rowCount = dailyAsRows ? Math.min(days, Math.max(3, Math.floor(remaining / 34))) : 0;
-  const colCount = Math.min(days, Math.max(3, Math.floor(W / 62)));
+  const rowCount = Math.min(days, Math.floor(remaining / ROW_H));
+  const showDaily = days > 0 && rowCount >= 2;
   const hourCount = Math.max(4, Math.min(12, Math.floor(W / 56)));
   const weekMin = Math.min(...d.daily.slice(0, days).map((x) => x.tMin));
   const weekMax = Math.max(...d.daily.slice(0, days).map((x) => x.tMax));
@@ -261,16 +261,16 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
         )}
 
         {/* Daily — rows with range bars */}
-        {showDaily && dailyAsRows && (
-          <div className="mt-auto flex flex-col justify-end">
+        {showDaily && (
+          <div className="mt-1 flex flex-1 flex-col justify-evenly">
             {d.daily.slice(0, rowCount).map((day, i) => {
               const lo = ((day.tMin - weekMin) / span) * 100;
               const hi = ((day.tMax - weekMin) / span) * 100;
               return (
-                <div key={day.date} className="flex items-center gap-2.5 py-[3px] text-sm" style={{ minHeight: 30 }}>
+                <div key={day.date} className="flex items-center gap-2.5 py-[3px] text-sm" style={{ minHeight: ROW_H }}>
                   <span className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/55">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
                   <WeatherIcon code={day.code} size={20} className="shrink-0" />
-                  <span className="w-8 shrink-0 text-right text-[10px] text-[var(--cool)] tabular">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
+                  {W >= 300 && <span className="w-8 shrink-0 text-right text-[10px] text-[var(--cool)] tabular">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>}
                   <span className="w-7 shrink-0 text-right text-xs tabular text-white/60">{Math.round(day.tMin)}°</span>
                   <span className="relative h-1.5 flex-1 rounded-full bg-white/10">
                     <span
@@ -289,24 +289,6 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
           </div>
         )}
 
-        {/* Daily — columns */}
-        {showDaily && !dailyAsRows && (
-          <div className="mt-auto flex justify-between gap-1 rounded-2xl bg-black/15 px-3 py-2">
-            {d.daily.slice(0, colCount).map((day, i) => (
-              <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 text-center">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
-                <WeatherIcon code={day.code} size={24} />
-                <span className="text-xs tabular">
-                  <span className="font-semibold" style={{ color: tempColor(toC(day.tMax, units)) }}>
-                    {Math.round(day.tMax)}°
-                  </span>{' '}
-                  <span className="text-white/45">{Math.round(day.tMin)}°</span>
-                </span>
-                <span className="h-3 text-[9px] text-[var(--cool)]">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
