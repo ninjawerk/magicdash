@@ -65,13 +65,13 @@ export function Toolbar() {
       {/* Screen tabs (edit mode) or indicator dots (viewing) */}
       {screens.length > 1 && (
         <div
-          className={`fixed top-3 left-1/2 z-50 -translate-x-1/2 transition-all duration-300 ${
-            editMode ? 'surface-glass flex items-center gap-1 rounded-2xl border border-white/10 p-1.5 shadow-2xl' : 'flex items-center gap-2 rounded-full px-3 py-2'
+          className={`fixed left-1/2 z-50 -translate-x-1/2 transition-all duration-300 ${
+            editMode ? 'top-2 surface-glass flex items-center gap-1 rounded-2xl border border-white/10 p-1 shadow-2xl' : 'top-2 flex items-center gap-2 rounded-full px-3 py-1'
           } ${visible || editMode || attention ? 'opacity-100' : 'opacity-40'}`}
         >
           {editMode
             ? screens.map((sc) => (
-                <button key={sc.id} className={`btn ${sc.id === activeScreenId ? 'btn-primary' : 'btn-ghost'}`} onClick={() => showScreen(sc.id)} title={`${sc.widgets.length} tiles`}>
+                <button key={sc.id} className={`btn py-1.5 ${sc.id === activeScreenId ? 'btn-primary' : 'btn-ghost'}`} onClick={() => showScreen(sc.id)} title={`${sc.widgets.length} tiles`}>
                   {sc.name}
                 </button>
               ))
@@ -84,7 +84,7 @@ export function Toolbar() {
                 />
               ))}
           {editMode && (
-            <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'screens' })} title="Manage screens & rotation">
+            <button className="btn btn-ghost py-1.5" onClick={() => setDialog({ kind: 'screens' })} title="Manage screens & rotation">
               <Layers size={16} />
             </button>
           )}
