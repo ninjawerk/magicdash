@@ -100,6 +100,13 @@ body.hide-cursor * {
   box-shadow: 0 0 40px -10px var(--accent);
 }
 
+/* …and one that can't be swapped because there is no room for it anywhere */
+.swap-blocked .tile {
+  outline: 2px solid #ff5c5c;
+  outline-offset: 2px;
+  box-shadow: 0 0 40px -10px #ff5c5c;
+}
+
 /* Alert state used by the schedule widget in the final minute */
 @keyframes pulse-alert {
   0%,

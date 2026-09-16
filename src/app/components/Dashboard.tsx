@@ -4,7 +4,7 @@ import RGL, { type Layout } from 'react-grid-layout';
 import { useStore } from '../lib/store';
 import { WidgetShell } from './WidgetShell';
 import { getClientPlugin } from '../lib/registry';
-import { applyRects, pushDown } from '../lib/layoutUtils';
+import { applyRects, collides, pushDown } from '../lib/layoutUtils';
 
 /** All screens stacked; only the active one is visible. Inactive screens stay mounted so their widgets keep running. */
 export function Dashboard() {
@@ -49,17 +49,51 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
   const dragOrigin = useRef<{ id: string; x: number; y: number; w: number; h: number } | null>(null);
   const hoverTarget = useRef<string | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const [swapTarget, setSwapTargetState] = useState<string | null>(null);
-  const pendingSwap = useRef<string | null>(null);
-  const setSwapTarget = (id: string | null) => {
-    pendingSwap.current = id;
-    setSwapTargetState(id);
+  /** Where the hovered tile would go if we swapped now; `ok: false` means there is no room anywhere. */
+  type SwapPlan = { targetId: string; x: number; y: number; ok: boolean };
+  const [swapPlan, setSwapPlanState] = useState<SwapPlan | null>(null);
+  const pendingSwap = useRef<SwapPlan | null>(null);
+  const setSwapPlan = (p: SwapPlan | null) => {
+    pendingSwap.current = p;
+    setSwapPlanState(p);
+  };
+  const swapTarget = swapPlan?.targetId ?? null;
+
+  /**
+   * Plan a swap: the dragged tile takes the target's slot; the target goes to the dragged tile's original slot if it
+   * fits there, otherwise to the first free spot that fits, otherwise nowhere (ok: false → red highlight).
+   */
+  const planSwap = (targetId: string): SwapPlan | null => {
+    const origin = dragOrigin.current;
+    const cur = layout?.screens.find((s) => s.id === screen.id);
+    const target = cur?.widgets.find((w) => w.id === targetId);
+    if (!origin || !cur || !target || !grid) return null;
+    const others = cur.widgets.filter((w) => w.id !== origin.id && w.id !== targetId).map((w) => ({ id: w.id, x: w.x, y: w.y, w: w.w, h: w.h }));
+    const a = { id: origin.id, x: Math.max(0, Math.min(target.x, grid.cols - origin.w)), y: target.y, w: origin.w, h: origin.h };
+    if (a.y + a.h > grid.rows) return { targetId, x: target.x, y: target.y, ok: false };
+    const fits = (x: number, y: number) => {
+      const t = { id: targetId, x, y, w: target.w, h: target.h };
+      if (x < 0 || y < 0 || x + t.w > grid.cols || y + t.h > grid.rows) return false;
+      return !collides(t, a) && !others.some((o) => collides(t, o));
+    };
+    const ox = Math.max(0, Math.min(origin.x, grid.cols - target.w));
+    if (fits(ox, origin.y)) return { targetId, x: ox, y: origin.y, ok: true };
+    // Nearest free spot to the original slot.
+    let best: { x: number; y: number; d: number } | undefined;
+    for (let y = 0; y + target.h <= grid.rows; y++) {
+      for (let x = 0; x + target.w <= grid.cols; x++) {
+        if (!fits(x, y)) continue;
+        const d = Math.abs(x - origin.x) + Math.abs(y - origin.y);
+        if (!best || d < best.d) best = { x, y, d };
+      }
+    }
+    return best ? { targetId, x: best.x, y: best.y, ok: true } : { targetId, x: target.x, y: target.y, ok: false };
   };
   const clearHover = () => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTimer.current = undefined;
     hoverTarget.current = null;
-    setSwapTarget(null);
+    setSwapPlan(null);
   };
   const onDrag = (_l: Layout[], _old: Layout, item: Layout, _ph: Layout, e: Event) => {
     const origin = dragOrigin.current;
@@ -79,8 +113,8 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
     if (id === hoverTarget.current) return;
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTarget.current = id;
-    setSwapTarget(null);
-    if (id) hoverTimer.current = setTimeout(() => setSwapTarget(id), SWAP_DWELL_MS);
+    setSwapPlan(null);
+    if (id) hoverTimer.current = setTimeout(() => setSwapPlan(planSwap(id)), SWAP_DWELL_MS);
   };
 
   useEffect(() => {
@@ -130,27 +164,23 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
     return cur.widgets.map((w) => (w.id === actorId && moved ? { id: w.id, x: moved.x, y: moved.y, w: moved.w, h: moved.h } : { id: w.id, x: w.x, y: w.y, w: w.w, h: w.h }));
   };
 
-  /** Drop with a swap intent: dragged tile takes the target's slot, target takes the dragged tile's original slot. */
-  const commitSwap = (next: Layout[], actor: Layout, targetId: string): boolean => {
+  /** Drop with a swap plan: dragged tile takes the target's slot, target goes where the plan says. */
+  const commitSwap = (next: Layout[], actor: Layout, plan: SwapPlan): boolean => {
+    if (!plan.ok) return false;
     const origin = dragOrigin.current;
     const cur = layout?.screens.find((s) => s.id === screen.id);
-    const target = cur?.widgets.find((w) => w.id === targetId);
-    if (!origin || !cur || !target) return false;
+    const target = cur?.widgets.find((w) => w.id === plan.targetId);
+    if (!origin || !cur || !target || !grid) return false;
     const rects = rectsFor(next, actor.i);
     const a = rects?.find((r) => r.id === actor.i);
-    const t = rects?.find((r) => r.id === targetId);
+    const t = rects?.find((r) => r.id === plan.targetId);
     if (!rects || !a || !t) return false;
-    a.x = target.x;
+    a.x = Math.max(0, Math.min(target.x, grid.cols - a.w));
     a.y = target.y;
-    t.x = origin.x;
-    t.y = origin.y;
-    // Keep both inside the grid.
-    const cols = layout!.grid.cols;
-    const rows = layout!.grid.rows;
-    a.x = Math.max(0, Math.min(a.x, cols - a.w));
-    t.x = Math.max(0, Math.min(t.x, cols - t.w));
-    if (a.y + a.h > rows || t.y + t.h > rows) return false;
-    const resolved = pushDown(rects, [actor.i, targetId], rows);
+    t.x = plan.x;
+    t.y = plan.y;
+    if (a.y + a.h > grid.rows || t.y + t.h > grid.rows) return false;
+    const resolved = pushDown(rects, [actor.i, plan.targetId], grid.rows);
     if (!resolved) return false;
     updateLayout((l) => {
       const c = l.screens.find((s) => s.id === screen.id);
@@ -207,9 +237,11 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
           onDrag={onDrag}
           onDragStop={(layout, _old, item) => {
             draggingRef.current = false;
-            const target = swapTarget ?? pendingSwap.current;
+            const plan = pendingSwap.current;
             clearHover();
-            if (target && commitSwap(layout, item, target)) {
+            if (plan) {
+              // A planned swap either happens or, if there was no room, nothing moves at all.
+              if (!plan.ok || !commitSwap(layout, item, plan)) setBounce((b) => b + 1);
               dragOrigin.current = null;
               return;
             }
@@ -225,15 +257,16 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
           {screen.widgets.map((w) => {
             // Preview: the swap target slides into the dragged tile's original slot.
             let preview: React.CSSProperties | undefined;
-            if (swapTarget === w.id && dragOrigin.current) {
+            if (swapPlan && swapPlan.targetId === w.id && swapPlan.ok) {
               const colW = (size.width - grid.padding * 2 - grid.gap * (grid.cols - 1)) / grid.cols;
-              const dx = (dragOrigin.current.x - w.x) * (colW + grid.gap);
-              const dy = (dragOrigin.current.y - w.y) * (rowHeight + grid.gap);
+              const dx = (swapPlan.x - w.x) * (colW + grid.gap);
+              const dy = (swapPlan.y - w.y) * (rowHeight + grid.gap);
               preview = { transform: `translate(${dx}px, ${dy}px)`, transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)', zIndex: 25, position: 'relative' };
             }
+            const swapClass = swapTarget === w.id ? (swapPlan?.ok ? 'swap-target' : 'swap-blocked') : '';
             return (
               <div key={w.id} style={hidden.has(w.id) ? { visibility: 'hidden' } : undefined}>
-                <div className={`h-full w-full ${swapTarget === w.id ? 'swap-target' : ''}`} style={preview ?? { transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+                <div className={`h-full w-full ${swapClass}`} style={preview ?? { transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
                   <WidgetShell widget={w} screenId={screen.id} />
                 </div>
               </div>
