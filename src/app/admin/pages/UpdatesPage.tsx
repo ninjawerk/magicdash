@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpCircle, CheckCircle2, ExternalLink, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { hostApi } from '../../lib/api';
+import { ConfirmButton } from '../../components/ConfirmButton';
 import { subscribeEvents } from '@sdk/client';
 
 export function UpdatesPage() {
@@ -50,7 +51,6 @@ export function UpdatesPage() {
   }, [restarting]);
 
   const run = async () => {
-    if (!confirm('Update now? The dashboard will rebuild and restart (about a minute on a Pi).')) return;
     setError(undefined);
     setLog([]);
     setRunning(true);
@@ -62,7 +62,6 @@ export function UpdatesPage() {
     }
   };
   const restart = async () => {
-    if (!confirm('Restart the MagicDash server?')) return;
     const r = await hostApi.restart();
     if (r.prod) setRestarting(true);
     else setError('Dev mode: restart npm run dev yourself.');
@@ -105,12 +104,12 @@ export function UpdatesPage() {
           <button className="btn btn-default" onClick={check} disabled={checking}>
             <RefreshCw size={14} className={checking ? 'animate-spin' : ''} /> Check again
           </button>
-          <button className="btn btn-primary" onClick={run} disabled={running || !g?.available || (g.dirty ?? false)} title={g?.dirty ? 'Commit or discard local changes first' : ''}>
+          <ConfirmButton className="btn btn-primary" armedClassName="btn btn-primary ring-2 ring-[var(--accent)]/50" onConfirm={run} disabled={running || !g?.available || (g.dirty ?? false)} title={g?.dirty ? 'Commit or discard local changes first' : ''} confirmLabel="Tap again — rebuilds & restarts (~1 min)">
             {running ? <Loader2 size={14} className="animate-spin" /> : <ArrowUpCircle size={14} />} {st?.updateAvailable ? 'Update now' : 'Reinstall & rebuild'}
-          </button>
-          <button className="btn btn-ghost ml-auto" onClick={restart}>
+          </ConfirmButton>
+          <ConfirmButton className="btn btn-ghost ml-auto" onConfirm={restart} confirmLabel="Tap again to restart">
             <RotateCcw size={14} /> Restart server
-          </button>
+          </ConfirmButton>
         </div>
         {error && <p className="mt-3 text-xs text-red-300">{error}</p>}
         <p className="mt-3 text-xs text-white/40">

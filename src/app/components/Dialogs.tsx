@@ -10,6 +10,7 @@ import { Modal } from './Modal';
 import { SchemaForm } from './SchemaForm';
 import { THEME_PRESETS, applyTheme, normalizeTheme, stripPreset, type Theme } from '../lib/themes';
 import { LocationPicker } from './LocationPicker';
+import { ConfirmButton } from './ConfirmButton';
 import type { DashboardContext } from '@sdk';
 import { Check } from 'lucide-react';
 
@@ -468,7 +469,6 @@ export function BackupDialog({ onClose }: { onClose: () => void }) {
 
   const restore = async () => {
     if (!file) return;
-    if (!confirm(`Replace the current ${[restoreLayout && 'layout', restoreSettings && 'plugin settings'].filter(Boolean).join(' and ')} with "${file.name}"?`)) return;
     setBusy(true);
     try {
       const r = await hostApi.importBackup(file.data, { layout: restoreLayout, settings: restoreSettings });
@@ -548,9 +548,9 @@ export function BackupDialog({ onClose }: { onClose: () => void }) {
                 <input type="checkbox" className="accent-[var(--accent)]" checked={restoreSettings} onChange={(e) => setRestoreSettings(e.target.checked)} />
                 <span>Restore plugin settings{d.includesSecrets ? ' and sign-ins' : ''}</span>
               </label>
-              <button className="btn btn-danger" disabled={busy || (!restoreLayout && !restoreSettings)} onClick={restore}>
+              <ConfirmButton className="btn btn-danger" armedClassName="btn bg-red-500/50 text-red-50 border border-red-400/50" disabled={busy || (!restoreLayout && !restoreSettings)} confirmLabel="Tap again to replace current data" onConfirm={restore}>
                 {busy && <Loader2 className="animate-spin" size={14} />} Restore — replaces current data
-              </button>
+              </ConfirmButton>
             </div>
           )}
         </section>
@@ -617,7 +617,6 @@ export function InstallPluginDialog({ onClose }: { onClose: () => void }) {
   }, []);
 
   const installFromCatalog = async (item: CatalogItem) => {
-    if (!item.reviewed && !confirm(`"${item.name}" has NOT been reviewed by the catalog maintainers.\n\nIt will run code on this machine with the dashboard's permissions. Only continue if you trust ${item.author} (${item.repo}).`)) return;
     setError(undefined);
     setStage('uploading');
     setBusy('Downloading & verifying…');
@@ -717,7 +716,6 @@ export function InstallPluginDialog({ onClose }: { onClose: () => void }) {
     }
   };
   const remove = async (p: InstalledPlugin) => {
-    if (!confirm(`Remove plugin "${p.name}"? Tiles using it will show as missing until you add another plugin.`)) return;
     setError(undefined);
     try {
       await hostApi.removePlugin(p.id);
@@ -882,9 +880,15 @@ export function InstallPluginDialog({ onClose }: { onClose: () => void }) {
                   ) : it.installedVersion && !it.updateAvailable ? (
                     <span className="text-xs text-emerald-300">installed</span>
                   ) : (
+                    it.reviewed ? (
                     <button className="btn btn-primary px-3 py-1 text-xs" disabled={working || enabled?.enabled === false} onClick={() => installFromCatalog(it)}>
                       <Download size={12} /> {it.updateAvailable ? `Update to v${it.version}` : 'Install'}
                     </button>
+                    ) : (
+                    <ConfirmButton className="btn btn-primary px-3 py-1 text-xs" armedClassName="btn px-3 py-1 text-xs bg-amber-500/30 text-amber-50 border border-amber-400/40" disabled={working || enabled?.enabled === false} confirmLabel="Unreviewed — install anyway?" onConfirm={() => installFromCatalog(it)}>
+                      <Download size={12} /> {it.updateAvailable ? `Update to v${it.version}` : 'Install'}
+                    </ConfirmButton>
+                    )
                   )}
                 </div>
               </div>
@@ -961,9 +965,9 @@ export function InstallPluginDialog({ onClose }: { onClose: () => void }) {
                   {p.source}
                 </span>
                 {p.source === 'custom' && (
-                  <button className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200" title="Remove" disabled={working} onClick={() => remove(p)}>
+                  <ConfirmButton className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200" armedClassName="btn px-2 py-1 bg-red-500/40 text-red-50 text-xs" title="Remove" disabled={working} confirmLabel="Remove plugin?" onConfirm={() => remove(p)}>
                     <Trash2 size={14} />
-                  </button>
+                  </ConfirmButton>
                 )}
               </li>
             ))}
@@ -1036,16 +1040,9 @@ export function ScreensDialog({ onClose }: { onClose: () => void }) {
                 <button className="btn btn-ghost px-2 py-1.5 text-xs" onClick={() => showScreen(sc.id)} disabled={sc.id === activeScreenId}>
                   Show
                 </button>
-                <button
-                  className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200"
-                  disabled={layout.screens.length <= 1}
-                  title="Delete screen"
-                  onClick={() => {
-                    if (sc.widgets.length === 0 || confirm(`Delete "${sc.name}" and its ${sc.widgets.length} tiles?`)) removeScreen(sc.id);
-                  }}
-                >
+                <ConfirmButton className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200" armedClassName="btn px-2 py-1 bg-red-500/40 text-red-50 text-xs" disabled={layout.screens.length <= 1} title="Delete screen" confirmLabel={`Delete ${sc.widgets.length} tiles?`} onConfirm={() => removeScreen(sc.id)}>
                   <Trash2 size={14} />
-                </button>
+                </ConfirmButton>
               </li>
             ))}
           </ul>
