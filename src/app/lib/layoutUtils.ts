@@ -13,32 +13,74 @@ export function collides(a: Rect, b: Rect): boolean {
 }
 
 /**
- * Free-placement collision resolution: the `actor` keeps its new position and any tile it now overlaps is
- * pushed straight down (cascading). Tiles that weren't touched stay where they are.
+ * Free-placement collision resolution: the `actor`(s) keep their new position and any tile they now overlap is
+ * pushed straight down (cascading). Tiles that weren't touched stay where they are — including tiles that already
+ * overlapped each other before the gesture (a broken layout must not block every gesture).
  * Returns null when something would fall off the bottom of the grid — the caller should then revert.
  */
 export function pushDown(items: Rect[], actorId: string | string[], rows: number): Rect[] | null {
   const actorIds = Array.isArray(actorId) ? actorId : [actorId];
-  const actors = actorIds.map((id) => items.find((i) => i.id === id)).filter((a): a is Rect => !!a);
+  const actors = items.filter((i) => actorIds.includes(i.id)).map((a) => ({ ...a }));
   if (actors.length === 0) return items;
-  // Actors are fixed; if two actors overlap each other the arrangement is impossible.
   for (let i = 0; i < actors.length; i++) for (let j = i + 1; j < actors.length; j++) if (collides(actors[i], actors[j])) return null;
-  const placed: Rect[] = actors.map((a) => ({ ...a }));
-  const others = items
-    .filter((i) => !actorIds.includes(i.id))
-    .map((i) => ({ ...i }))
-    .sort((a, b) => a.y - b.y || a.x - b.x);
+  // "blockers" are rects that others must not overlap: the actors plus anything we pushed.
+  const blockers: Rect[] = [...actors];
+  const out: Rect[] = [...actors];
+  const others = items.filter((i) => !actorIds.includes(i.id)).map((i) => ({ ...i })).sort((a, b) => a.y - b.y || a.x - b.x);
   for (const it of others) {
-    // Keep moving down until it collides with nothing already placed.
+    let moved = false;
     for (let guard = 0; guard < 100; guard++) {
-      const hit = placed.filter((p) => collides(p, it));
+      const hit = blockers.filter((b) => collides(b, it));
       if (hit.length === 0) break;
-      it.y = Math.max(...hit.map((p) => p.y + p.h));
+      it.y = Math.max(...hit.map((b) => b.y + b.h));
+      moved = true;
     }
     if (it.y + it.h > rows) return null;
-    placed.push(it);
+    if (moved) blockers.push(it);
+    out.push(it);
   }
-  return placed;
+  return out;
+}
+
+/**
+ * Untangle a layout that already has overlapping or out-of-bounds tiles (e.g. from an older "stack at the bottom"
+ * fallback). Tiles are kept in reading order; a colliding tile moves to the first free spot, or is clamped if there
+ * is none. Returns the same array when nothing needed fixing.
+ */
+export function repairLayout<T extends Rect>(items: T[], cols: number, rows: number): T[] {
+  const placed: Rect[] = [];
+  let changed = false;
+  const out = [...items]
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .map((it) => {
+      let r: Rect = { id: it.id, x: it.x, y: it.y, w: Math.min(it.w, cols), h: Math.min(it.h, rows) };
+      r.x = Math.max(0, Math.min(r.x, cols - r.w));
+      r.y = Math.max(0, Math.min(r.y, rows - r.h));
+      if (placed.some((p) => collides(p, r))) {
+        // Find room at the current size, then progressively smaller (the grid library would otherwise push an
+        // overlapping tile below the bottom edge where nobody can see it).
+        const find = (w: number, h: number) => {
+          for (let y = 0; y + h <= rows; y++)
+            for (let x = 0; x + w <= cols; x++) {
+              const cand = { id: r.id, x, y, w, h };
+              if (!placed.some((p) => collides(p, cand))) return cand;
+            }
+          return undefined;
+        };
+        let found: Rect | undefined;
+        for (let shrink = 0; !found && shrink < Math.max(r.w, r.h); shrink++) {
+          // Prefer giving up width or height alone before both.
+          found = find(Math.max(1, r.w - shrink), r.h) ?? find(r.w, Math.max(1, r.h - shrink)) ?? find(Math.max(1, r.w - shrink), Math.max(1, r.h - shrink));
+        }
+        if (found) r = found;
+      }
+      if (r.x !== it.x || r.y !== it.y || r.w !== it.w || r.h !== it.h) changed = true;
+      placed.push(r);
+      return { ...it, x: r.x, y: r.y, w: r.w, h: r.h };
+    });
+  if (!changed) return items;
+  const order = new Map(items.map((it, i) => [it.id, i]));
+  return out.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
 export function applyRects(widgets: WidgetInstance[], rects: Rect[]): WidgetInstance[] {

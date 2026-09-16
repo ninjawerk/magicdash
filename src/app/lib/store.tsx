@@ -5,6 +5,7 @@ import { setLocale } from '@sdk/i18n';
 import { ATTENTION_COOLDOWN_MS, ATTENTION_MAX_MS, allWidgets, defaultsFor, normalizeLayout } from '@sdk';
 import { subscribeEvents, createPluginApi, type PluginApi } from '@sdk/client';
 import { hostApi } from './api';
+import { repairLayout } from './layoutUtils';
 import { getClientPlugin, listClientPlugins } from './registry';
 
 export type DialogState =
@@ -81,7 +82,7 @@ export function useStore(): Store {
   return s;
 }
 
-function findFreeSpot(layout: DashboardLayout, screen: Screen, w: number, h: number): { x: number; y: number } {
+function findFreeSpot(layout: DashboardLayout, screen: Screen, w: number, h: number): { x: number; y: number } | undefined {
   const { cols, rows } = layout.grid;
   const occupied = (x: number, y: number) => screen.widgets.some((wi) => x < wi.x + wi.w && x + w > wi.x && y < wi.y + wi.h && y + h > wi.y);
   for (let y = 0; y + h <= rows; y++) {
@@ -89,13 +90,26 @@ function findFreeSpot(layout: DashboardLayout, screen: Screen, w: number, h: num
       if (!occupied(x, y)) return { x, y };
     }
   }
-  return { x: 0, y: Math.max(0, rows - h) };
+  return undefined;
+}
+
+/** Fix overlapping / out-of-bounds tiles on every screen (older versions could stack tiles on top of each other). */
+function repairAll(l: DashboardLayout): DashboardLayout {
+  let changed = false;
+  const screens = l.screens.map((s) => {
+    const fixed = repairLayout(s.widgets, l.grid.cols, l.grid.rows);
+    if (fixed !== s.widgets) changed = true;
+    return fixed === s.widgets ? s : { ...s, widgets: fixed };
+  });
+  return changed ? { ...l, screens } : l;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [layout, setLayout] = useState<DashboardLayout>();
   const [error, setError] = useState<string>();
   const [editMode, setEditMode] = useState(false);
+  const editModeRef = useRef(false);
+  editModeRef.current = editMode;
   const [dialog, setDialog] = useState<DialogState>({ kind: 'none' });
   const [pluginSettings, setPluginSettings] = useState<Record<string, Record<string, unknown>>>({});
   const [activeScreenId, setActiveScreenId] = useState('main');
@@ -249,7 +263,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyIncoming = useCallback((raw: DashboardLayout) => {
-    const l = normalizeLayout(raw);
+    const normalized = normalizeLayout(raw);
+    const l = repairAll(normalized);
+    if (l !== normalized) {
+      console.warn('[layout] repaired overlapping tiles');
+      persist(l); // saves when this browser is signed in; the kiosk just shows the repaired version
+    }
     setLayout(l);
     setActiveScreenId((cur) => (l.screens.some((s) => s.id === cur) ? cur : l.screens[0].id));
   }, []);
@@ -288,7 +307,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       lastSaved.current = json;
       hostApi.saveLayout(next).catch((e) => {
         console.error('save failed', e);
-        if (/sign in|password/i.test((e as Error).message)) {
+        if (/sign in|password/i.test((e as Error).message) && editModeRef.current) {
           setEditMode(false);
           setDialog({ kind: 'login' });
         }
@@ -339,13 +358,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!plugin) return;
       const { w, h } = plugin.manifest.defaultSize;
       const id = `w-${pluginId}-${Math.random().toString(36).slice(2, 8)}`;
+      let added = false;
       updateLayout((l) => {
         const screen = l.screens.find((s) => s.id === activeScreenId) ?? l.screens[0];
-        const spot = findFreeSpot(l, screen, w, h);
-        const widget: WidgetInstance = { id, pluginId, ...spot, w, h, config: defaultsFor(plugin.manifest.widgetConfig) };
-        return { ...l, screens: l.screens.map((s) => (s.id === screen.id ? { ...s, widgets: [...s.widgets, widget] } : s)) };
+        // Try the default size, then progressively smaller, so a nearly full screen still gets the tile.
+        const sizes = [
+          [w, h],
+          [Math.max(plugin.manifest.minSize?.w ?? 1, Math.ceil(w / 2)), h],
+          [w, Math.max(plugin.manifest.minSize?.h ?? 1, Math.ceil(h / 2))],
+          [plugin.manifest.minSize?.w ?? 1, plugin.manifest.minSize?.h ?? 1],
+        ];
+        for (const [sw, sh] of sizes) {
+          const spot = findFreeSpot(l, screen, sw, sh);
+          if (!spot) continue;
+          const widget: WidgetInstance = { id, pluginId, ...spot, w: sw, h: sh, config: defaultsFor(plugin.manifest.widgetConfig) };
+          added = true;
+          return { ...l, screens: l.screens.map((s) => (s.id === screen.id ? { ...s, widgets: [...s.widgets, widget] } : s)) };
+        }
+        return l;
       });
-      setDialog({ kind: 'widget', widgetId: id });
+      if (added) setDialog({ kind: 'widget', widgetId: id });
+      else notify({ title: 'No room on this screen', message: 'Remove or shrink a tile, or add a screen, then try again.', level: 'warn', durationSec: 8 });
     },
     [updateLayout, activeScreenId],
   );

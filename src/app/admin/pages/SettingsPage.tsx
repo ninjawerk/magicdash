@@ -3,6 +3,7 @@ import { Copy, KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
 import { hostApi } from '../../lib/api';
 import { useStore } from '../../lib/store';
 import { SchemaForm } from '../../components/SchemaForm';
+import { ConfirmButton } from '../../components/ConfirmButton';
 import { LOCALE_FIELDS } from '../../components/Dialogs';
 import { Languages } from 'lucide-react';
 
@@ -134,18 +135,18 @@ function TokensSection() {
                 {t.lastUsedAt ? ` · last used ${new Date(t.lastUsedAt).toLocaleString()}` : ' · never used'}
               </span>
             </span>
-            <button
+            <ConfirmButton
               className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200"
+              armedClassName="btn px-2 py-1 bg-red-500/40 text-red-50 text-xs"
               title="Revoke"
-              onClick={async () => {
-                if (confirm(`Revoke token "${t.name}"?`)) {
-                  await hostApi.revokeToken(t.id);
-                  load();
-                }
+              confirmLabel="Revoke?"
+              onConfirm={async () => {
+                await hostApi.revokeToken(t.id);
+                load();
               }}
             >
               <Trash2 size={14} />
-            </button>
+            </ConfirmButton>
           </li>
         ))}
         {tokens.length === 0 && <li className="px-4 py-3 text-sm text-white/40">No tokens yet.</li>}

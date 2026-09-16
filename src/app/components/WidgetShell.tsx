@@ -3,6 +3,7 @@ import { Settings2, Trash2, AlertTriangle, Puzzle } from 'lucide-react';
 import { defaultsFor, type WidgetInstance } from '@sdk';
 import { getClientPlugin } from '../lib/registry';
 import { useStore } from '../lib/store';
+import { ConfirmButton } from './ConfirmButton';
 import { useLocale } from '@sdk/i18n';
 
 class ErrorBoundary extends Component<{ children: ReactNode; resetKey: string }, { error?: Error }> {
@@ -111,15 +112,9 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
             <button className="btn btn-ghost p-2" title="Settings" onClick={openSettings}>
               <Settings2 size={16} />
             </button>
-            <button
-              className="btn btn-ghost p-2 hover:bg-red-500/30 hover:text-red-200"
-              title="Remove"
-              onClick={() => {
-                if (confirm(`Remove "${title}"?`)) removeWidget(widget.id);
-              }}
-            >
+            <ConfirmButton className="btn btn-ghost p-2 hover:bg-red-500/30 hover:text-red-200" armedClassName="btn px-2 py-2 bg-red-500/40 text-red-50 text-xs font-semibold" title="Remove" confirmLabel="Remove?" onConfirm={() => removeWidget(widget.id)}>
               <Trash2 size={16} />
-            </button>
+            </ConfirmButton>
           </div>
           <div className="pointer-events-none absolute bottom-2 left-3 text-[10px] font-mono text-white/40">
             {plugin?.manifest.name} · {widget.w}×{widget.h}
