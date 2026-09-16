@@ -187,15 +187,18 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
   const cur = d.current;
   const curColor = tempColor(toC(cur.temp, units));
 
-  // Budget the vertical space: header (~92px, 70 compact) → detail chips (~34) → hourly (~86) → daily (rest).
+  // Budget the vertical space. Priority: header → hourly strip → day rows (≥2) → detail chips.
   const headerH = compact ? 70 : 92;
-  const showChips = config.showDetails !== false && !compact && W >= 300 && H >= headerH + 34 + 60;
-  let remaining = H - 16 - headerH - (showChips ? 42 : 0);
   const ROW_H = 30;
-  // Daily forecast is always a list of rows with range bars (columns were hard to read). Hourly only fits
-  // when it still leaves room for at least three day rows.
-  const showHourly = config.showHourly !== false && W >= 260 && remaining >= 94 + (days > 0 ? ROW_H * 3 : 0);
-  if (showHourly) remaining -= 94;
+  const HOURLY_H = 84;
+  const CHIPS_H = 42;
+  let remaining = H - 16 - headerH;
+  const minRows = days > 0 ? ROW_H * 2 : 0;
+  const showHourly = config.showHourly !== false && W >= 260 && remaining >= HOURLY_H + minRows;
+  if (showHourly) remaining -= HOURLY_H;
+  // Chips only when they don't cost us the hourly strip or drop the list below three days.
+  const showChips = config.showDetails !== false && !compact && W >= 300 && remaining >= CHIPS_H + (days > 0 ? ROW_H * 3 : 0);
+  if (showChips) remaining -= CHIPS_H;
   const rowCount = Math.min(days, Math.floor(remaining / ROW_H));
   const showDaily = days > 0 && rowCount >= 2;
   const hourCount = Math.max(4, Math.min(12, Math.floor(W / 56)));
@@ -246,7 +249,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
 
         {/* Hourly */}
         {showHourly && (
-          <div className="flex justify-between gap-1 rounded-2xl bg-black/15 px-3 py-2">
+          <div className="flex justify-between gap-1 rounded-2xl bg-black/15 px-3 py-1.5">
             {d.hourly.slice(0, hourCount).map((h, i) => (
               <div key={h.time} className="flex min-w-0 flex-col items-center gap-0.5 text-center">
                 <span className="text-[10px] text-white/50">{i === 0 ? 'Now' : fmtHour(h.time)}</span>
