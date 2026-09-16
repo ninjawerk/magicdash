@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Droplets, Loader2, MapPin, Search, Sunrise, Sunset, Wind } from 'lucide-react';
+import { Droplets, Loader2, MapPin, Search, Sun, Sunrise, Sunset, Thermometer, Wind } from 'lucide-react';
 import { definePlugin, usePluginQuery, type CustomFieldProps, type WidgetProps } from '../../src/sdk/client';
 import manifest from './manifest';
 import { describeCode, type Forecast, type Location } from './shared';
@@ -84,6 +84,65 @@ function LocationField({ value, onChange, api }: CustomFieldProps<Location | und
 }
 
 // ---------------------------------------------------------------------------
+// Colour helpers
+// ---------------------------------------------------------------------------
+/** Temperature → colour (input in °C). Cold blues through greens/yellows to hot reds. */
+function tempColor(c: number): string {
+  const stops: Array<[number, string]> = [
+    [-15, '#9ec5ff'],
+    [0, '#7cc4ff'],
+    [8, '#8be0c8'],
+    [16, '#c8e87a'],
+    [22, '#ffd166'],
+    [28, '#ff9f68'],
+    [34, '#ff6b6b'],
+    [42, '#e8407a'],
+  ];
+  if (c <= stops[0][0]) return stops[0][1];
+  for (let i = 1; i < stops.length; i++) {
+    if (c <= stops[i][0]) {
+      const [t0, c0] = stops[i - 1];
+      const [t1, c1] = stops[i];
+      return mix(c0, c1, (c - t0) / (t1 - t0));
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+function mix(a: string, b: string, t: number): string {
+  const pa = hex(a);
+  const pb = hex(b);
+  const r = pa.map((v, i) => Math.round(v + (pb[i] - v) * Math.max(0, Math.min(1, t))));
+  return `rgb(${r[0]},${r[1]},${r[2]})`;
+}
+function hex(h: string): number[] {
+  return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+}
+const toC = (t: number, units: string) => (units === 'imperial' ? ((t - 32) * 5) / 9 : t);
+
+/** Background wash for the whole tile, by condition. Translucent so it sits on any theme. */
+function conditionGradient(code: number, isDay: boolean): string {
+  if (code === 0 || code === 1) {
+    return isDay
+      ? 'linear-gradient(135deg, rgba(255,184,77,0.40) 0%, rgba(255,140,90,0.18) 45%, rgba(56,140,255,0.28) 100%)'
+      : 'linear-gradient(135deg, rgba(90,100,220,0.38) 0%, rgba(30,30,90,0.30) 60%, rgba(200,190,255,0.12) 100%)';
+  }
+  if (code === 2) return 'linear-gradient(135deg, rgba(110,165,255,0.34) 0%, rgba(255,200,120,0.18) 60%, rgba(140,150,180,0.20) 100%)';
+  if (code === 3 || code === 45 || code === 48) return 'linear-gradient(135deg, rgba(150,160,185,0.32) 0%, rgba(90,100,125,0.24) 100%)';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'linear-gradient(135deg, rgba(70,130,230,0.38) 0%, rgba(40,60,120,0.30) 100%)';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'linear-gradient(135deg, rgba(190,225,255,0.36) 0%, rgba(120,150,210,0.22) 100%)';
+  if (code >= 95) return 'linear-gradient(135deg, rgba(150,95,230,0.42) 0%, rgba(60,40,120,0.32) 100%)';
+  return 'linear-gradient(135deg, rgba(120,150,200,0.3) 0%, rgba(60,80,120,0.2) 100%)';
+}
+function glowColor(code: number, isDay: boolean): string {
+  if (code <= 1) return isDay ? 'rgba(255,209,102,0.55)' : 'rgba(205,214,244,0.35)';
+  if (code === 2) return isDay ? 'rgba(255,209,102,0.35)' : 'rgba(205,214,244,0.25)';
+  if (code >= 95) return 'rgba(195,166,255,0.5)';
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rgba(124,196,255,0.45)';
+  if (code >= 71 && code <= 86) return 'rgba(224,242,255,0.45)';
+  return 'rgba(201,209,224,0.3)';
+}
+
+// ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
 function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProps<Config>) {
@@ -114,92 +173,152 @@ function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProp
   const d = fc.data;
   const deg = units === 'imperial' ? '°F' : '°C';
   const speed = units === 'imperial' ? 'mph' : 'km/h';
-  const compact = size.height < 230 || size.width < 280;
-  const wide = size.width > 520;
-  const days = Math.min(config.days ?? 7, d.daily.length);
-  // Rough budgets: current ≈ 90px (70 compact), hourly ≈ 90px, daily ≈ 100px.
-  const showDaily = days > 0 && size.height > 190;
-  const showHourly = config.showHourly !== false && size.height > (showDaily ? 370 : 240);
+  const { width: W, height: H } = size;
+  const compact = H < 150 || W < 240;
   const today = d.daily[0];
-  const hourCount = Math.max(4, Math.min(12, Math.floor(size.width / 58)));
-  const dayCount = Math.min(days, Math.max(3, Math.floor(size.width / 64)));
+  const days = Math.min(config.days ?? 7, d.daily.length);
+  const cur = d.current;
+  const curColor = tempColor(toC(cur.temp, units));
+
+  // Budget the vertical space: header (~92px, 70 compact) → detail chips (~34) → hourly (~86) → daily (rest).
+  const headerH = compact ? 70 : 92;
+  const showChips = config.showDetails !== false && !compact && W >= 300 && H >= headerH + 34 + 60;
+  let remaining = H - 16 - headerH - (showChips ? 42 : 0);
+  const showHourly = config.showHourly !== false && remaining >= 86 + (days > 0 ? 80 : 0) && W >= 260;
+  if (showHourly) remaining -= 94;
+  const showDaily = days > 0 && remaining >= 60;
+  // Tall tiles list days as rows with range bars; wide/short tiles use columns.
+  const dailyAsRows = showDaily && remaining >= 34 * 3 && H > W * 0.55;
+  const rowCount = dailyAsRows ? Math.min(days, Math.max(3, Math.floor(remaining / 34))) : 0;
+  const colCount = Math.min(days, Math.max(3, Math.floor(W / 62)));
+  const hourCount = Math.max(4, Math.min(12, Math.floor(W / 56)));
+  const weekMin = Math.min(...d.daily.slice(0, days).map((x) => x.tMin));
+  const weekMax = Math.max(...d.daily.slice(0, days).map((x) => x.tMax));
+  const span = Math.max(1, weekMax - weekMin);
 
   return (
-    <div className="flex h-full flex-col px-5 pb-4 gap-3 overflow-hidden">
-      {/* Current */}
-      <div className="flex items-center gap-4 min-h-0">
-        <WeatherIcon code={d.current.code} isDay={d.current.isDay} size={compact ? 44 : 64} />
-        <div className="min-w-0">
-          <div className="flex items-start leading-none">
-            <span className="font-bold tracking-tight tabular" style={{ fontSize: Math.min(compact ? 40 : 56, size.width / 5) }}>
-              {Math.round(d.current.temp)}
-            </span>
-            <span className="mt-1 text-lg text-white/50 font-semibold">{deg}</span>
+    <div className="absolute inset-0 flex flex-col overflow-hidden">
+      {/* Condition wash + glow */}
+      <div className="pointer-events-none absolute inset-0" style={{ background: conditionGradient(cur.code, cur.isDay) }} />
+      <div
+        className="pointer-events-none absolute -left-10 -top-16 rounded-full blur-3xl"
+        style={{ width: Math.max(160, W * 0.5), height: Math.max(160, W * 0.5), background: glowColor(cur.code, cur.isDay), opacity: 0.8 }}
+      />
+
+      <div className="relative flex h-full flex-col gap-2 px-5 pb-4 pt-1">
+        {/* Current */}
+        <div className="flex items-center gap-4" style={{ minHeight: headerH - 12 }}>
+          <div className="relative shrink-0">
+            <WeatherIcon code={cur.code} isDay={cur.isDay} size={compact ? 44 : Math.min(72, H * 0.28)} />
           </div>
-          <div className="text-sm text-white/70 truncate">
-            {describeCode(d.current.code)}
-            {today && (
-              <span className="text-white/40">
-                {' '}
-                · H {Math.round(today.tMax)}° L {Math.round(today.tMin)}°
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start leading-none">
+              <span className="font-bold tracking-tight tabular" style={{ fontSize: Math.min(compact ? 40 : 58, W / 5.5), color: curColor }}>
+                {Math.round(cur.temp)}
               </span>
-            )}
-          </div>
-          <div className="text-xs text-white/40 truncate flex items-center gap-1">
-            <MapPin size={11} /> {loc.name}
-            {loc.country ? `, ${loc.country}` : ''}
+              <span className="mt-1 text-lg font-semibold text-white/50">{deg}</span>
+              {today && (
+                <span className="ml-3 mt-1.5 flex flex-col text-xs leading-tight tabular">
+                  <span style={{ color: tempColor(toC(today.tMax, units)) }}>H {Math.round(today.tMax)}°</span>
+                  <span style={{ color: tempColor(toC(today.tMin, units)) }}>L {Math.round(today.tMin)}°</span>
+                </span>
+              )}
+            </div>
+            <div className="mt-0.5 truncate text-sm font-medium text-white/80">{describeCode(cur.code)}</div>
+            <div className="flex items-center gap-1 truncate text-xs text-white/45">
+              <MapPin size={11} /> {loc.name}
+              {loc.country ? `, ${loc.country}` : ''}
+            </div>
           </div>
         </div>
-        {config.showDetails !== false && (wide || (!showHourly && size.width > 380)) && !compact && (
-          <div className="ml-auto grid grid-cols-2 gap-x-5 gap-y-1.5 text-xs text-white/60 shrink-0">
-            <Detail icon={<Droplets size={13} />} label="Humidity" value={`${d.current.humidity}%`} />
-            <Detail icon={<Wind size={13} />} label="Wind" value={`${Math.round(d.current.wind)} ${speed}`} />
-            {today && <Detail icon={<Sunrise size={13} />} label="Sunrise" value={fmtTime(today.sunrise)} />}
-            {today && <Detail icon={<Sunset size={13} />} label="Sunset" value={fmtTime(today.sunset)} />}
+
+        {/* Detail chips */}
+        {showChips && (
+          <div className="flex flex-nowrap gap-1.5 overflow-hidden">
+            <Chip icon={<Thermometer size={12} />} color="#ff9f68" label="Feels" value={`${Math.round(cur.feelsLike)}°`} />
+            <Chip icon={<Droplets size={12} />} color="#7cc4ff" label="Humidity" value={`${cur.humidity}%`} />
+            {W >= 360 && <Chip icon={<Wind size={12} />} color="#8be0c8" label="Wind" value={`${Math.round(cur.wind)} ${speed}`} />}
+            {W >= 430 && <Chip icon={<Sun size={12} />} color="#ffd166" label="UV" value={`${Math.round(cur.uv)}`} />}
+            {W >= 520 && today && <Chip icon={<Sunrise size={12} />} color="#ffb366" label="Sunrise" value={fmtTime(today.sunrise)} />}
+            {W >= 600 && today && <Chip icon={<Sunset size={12} />} color="#c3a6ff" label="Sunset" value={fmtTime(today.sunset)} />}
+          </div>
+        )}
+
+        {/* Hourly */}
+        {showHourly && (
+          <div className="flex justify-between gap-1 rounded-2xl bg-black/15 px-3 py-2">
+            {d.hourly.slice(0, hourCount).map((h, i) => (
+              <div key={h.time} className="flex min-w-0 flex-col items-center gap-0.5 text-center">
+                <span className="text-[10px] text-white/50">{i === 0 ? 'Now' : fmtHour(h.time)}</span>
+                <WeatherIcon code={h.code} isDay={h.isDay} size={20} />
+                <span className="text-xs font-semibold tabular" style={{ color: tempColor(toC(h.temp, units)) }}>
+                  {Math.round(h.temp)}°
+                </span>
+                <span className="h-3 text-[9px] text-sky-300">{h.precipProb > 15 ? `${h.precipProb}%` : ''}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Daily — rows with range bars */}
+        {showDaily && dailyAsRows && (
+          <div className="mt-auto flex flex-col justify-end">
+            {d.daily.slice(0, rowCount).map((day, i) => {
+              const lo = ((day.tMin - weekMin) / span) * 100;
+              const hi = ((day.tMax - weekMin) / span) * 100;
+              return (
+                <div key={day.date} className="flex items-center gap-2.5 py-[3px] text-sm" style={{ minHeight: 30 }}>
+                  <span className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/55">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
+                  <WeatherIcon code={day.code} size={20} className="shrink-0" />
+                  <span className="w-8 shrink-0 text-right text-[10px] text-sky-300 tabular">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
+                  <span className="w-7 shrink-0 text-right text-xs tabular text-white/60">{Math.round(day.tMin)}°</span>
+                  <span className="relative h-1.5 flex-1 rounded-full bg-white/10">
+                    <span
+                      className="absolute inset-y-0 rounded-full"
+                      style={{
+                        left: `${lo}%`,
+                        width: `${Math.max(6, hi - lo)}%`,
+                        background: `linear-gradient(90deg, ${tempColor(toC(day.tMin, units))}, ${tempColor(toC(day.tMax, units))})`,
+                      }}
+                    />
+                  </span>
+                  <span className="w-7 shrink-0 text-xs font-semibold tabular">{Math.round(day.tMax)}°</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Daily — columns */}
+        {showDaily && !dailyAsRows && (
+          <div className="mt-auto flex justify-between gap-1 rounded-2xl bg-black/15 px-3 py-2">
+            {d.daily.slice(0, colCount).map((day, i) => (
+              <div key={day.date} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 text-center">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/50">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
+                <WeatherIcon code={day.code} size={24} />
+                <span className="text-xs tabular">
+                  <span className="font-semibold" style={{ color: tempColor(toC(day.tMax, units)) }}>
+                    {Math.round(day.tMax)}°
+                  </span>{' '}
+                  <span className="text-white/45">{Math.round(day.tMin)}°</span>
+                </span>
+                <span className="h-3 text-[9px] text-sky-300">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
-
-      {/* Hourly */}
-      {showHourly && (
-        <div className="flex justify-between gap-1 border-t border-white/10 pt-3">
-          {d.hourly.slice(0, hourCount).map((h, i) => (
-            <div key={h.time} className="flex flex-col items-center gap-1 text-center min-w-0">
-              <span className="text-[11px] text-white/45">{i === 0 ? 'Now' : fmtHour(h.time)}</span>
-              <WeatherIcon code={h.code} isDay={h.isDay} size={22} />
-              <span className="text-sm font-semibold tabular">{Math.round(h.temp)}°</span>
-              {h.precipProb > 15 && <span className="text-[10px] text-sky-300">{h.precipProb}%</span>}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Daily */}
-      {showDaily && (
-        <div className="mt-auto flex justify-between gap-1 border-t border-white/10 pt-3">
-          {d.daily.slice(0, dayCount).map((day, i) => (
-            <div key={day.date} className="flex flex-col items-center gap-1 text-center min-w-0 flex-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-white/45">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
-              <WeatherIcon code={day.code} size={26} />
-              <span className="text-sm tabular">
-                <span className="font-semibold">{Math.round(day.tMax)}°</span> <span className="text-white/40">{Math.round(day.tMin)}°</span>
-              </span>
-              {day.precipProb > 15 && <span className="text-[10px] text-sky-300">{day.precipProb}%</span>}
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Chip({ icon, color, label, value }: { icon: React.ReactNode; color: string; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-1.5 whitespace-nowrap">
-      <span className="text-white/40">{icon}</span>
-      <span className="text-white/40">{label}</span>
-      <span className="font-semibold text-white/80 tabular ml-auto">{value}</span>
-    </div>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-xs">
+      <span style={{ color }}>{icon}</span>
+      <span className="text-white/50">{label}</span>
+      <span className="font-semibold tabular">{value}</span>
+    </span>
   );
 }
 
