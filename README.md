@@ -10,8 +10,8 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 - **Schedule first.** The Google Calendar tile shows what's on *now*, how long is left with a progress bar,
   what's *next* and a countdown to it. If nothing is on, it counts down to the next thing. In the final minute
   of an event the tile turns red and pulses.
-- **Tile grid.** Press `E` (or tap the pencil) to drag, resize, add and remove tiles. Hold a tile over another for a
-  moment and they swap places, like phone home screens; drop onto others and they're pushed down. Every tile has its own settings.
+- **Tile grid.** Press `E` (or tap the pencil) to drag, resize, add and remove tiles. Other tiles stay put while you drag; hold a tile over
+  another for a moment and they swap places, like phone home screens. Every tile has its own settings.
 - **Themes.** Eleven presets — Midnight, Pure black, Nord, Dracula, Solarized, Forest, Ocean, Sunset, Rosé and two
   light ones — plus full control over background, accent, text and tile colours. Changes preview live.
 - **Screens.** Several pages of tiles that rotate every N seconds. Plugins can grab **attention** — the Schedule tile

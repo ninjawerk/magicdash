@@ -45,7 +45,7 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
   const [bounce, setBounce] = useState(0);
 
   // --- Hover-to-swap (like phone home screens): hold a dragged tile over another for a moment and they trade places.
-  const SWAP_DWELL_MS = 650;
+  const SWAP_DWELL_MS = 750;
   const dragOrigin = useRef<{ id: string; x: number; y: number; w: number; h: number } | null>(null);
   const hoverTarget = useRef<string | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -61,15 +61,21 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
     hoverTarget.current = null;
     setSwapTarget(null);
   };
-  const onDrag = (_l: Layout[], _old: Layout, item: Layout) => {
+  const onDrag = (_l: Layout[], _old: Layout, item: Layout, _ph: Layout, e: Event) => {
     const origin = dragOrigin.current;
-    if (!origin) return;
-    const cx = item.x + item.w / 2;
-    const cy = item.y + item.h / 2;
+    const el = containerRef.current;
+    if (!origin || !el || !grid) return;
+    // Where is the pointer, in grid cells? (With collisions prevented, `item` stays at its last free cell, so use the event.)
+    const te = e as unknown as TouchEvent & MouseEvent;
+    const px = te.touches?.[0]?.clientX ?? te.clientX;
+    const py = te.touches?.[0]?.clientY ?? te.clientY;
+    if (px === undefined || py === undefined) return;
+    const rect = el.getBoundingClientRect();
+    const colW = (size.width - grid.padding * 2 - grid.gap * (grid.cols - 1)) / grid.cols;
+    const cx = (px - rect.left - grid.padding) / (colW + grid.gap);
+    const cy = (py - rect.top - grid.padding) / (rowHeight + grid.gap);
     const target = screen.widgets.find((w) => w.id !== item.i && cx >= w.x && cx < w.x + w.w && cy >= w.y && cy < w.y + w.h);
-    // Hovering over our own original slot is not a swap.
-    const overOrigin = cx >= origin.x && cx < origin.x + origin.w && cy >= origin.y && cy < origin.y + origin.h;
-    const id = target && !overOrigin ? target.id : null;
+    const id = target ? target.id : null;
     if (id === hoverTarget.current) return;
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     hoverTarget.current = id;
@@ -113,11 +119,6 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
 
   if (!layout || !grid) return null;
 
-  /**
-   * Called when a drag or resize ends. `next` is RGL's layout, which may contain overlaps because we let the
-   * user drop onto other tiles. We keep the moved tile where the user put it, push anything it covers
-   * downward, and revert the whole gesture if that would overflow the screen.
-   */
   /**
    * Rects for collision resolution: stored positions for everyone (RGL displaces bystanders while a tile passes over
    * them and we don't want that noise), with the actor's position taken from the gesture.
@@ -192,7 +193,7 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
           margin={[grid.gap, grid.gap]}
           containerPadding={[grid.padding, grid.padding]}
           compactType={null}
-          preventCollision={false}
+          preventCollision
           isBounded
           isDraggable={editMode && active}
           isResizable={editMode && active}
