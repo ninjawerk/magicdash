@@ -11,6 +11,8 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
   what's *next* and a countdown to it. If nothing is on, it counts down to the next thing. In the final minute
   of an event the tile turns red and pulses.
 - **Tile grid.** Press `E` (or tap the pencil) to drag, resize, add and remove tiles. Every tile has its own settings.
+- **Themes.** Eleven presets — Midnight, Pure black, Nord, Dracula, Solarized, Forest, Ocean, Sunset, Rosé and two
+  light ones — plus full control over background, accent, text and tile colours. Changes preview live.
 - **Edit from anywhere.** The layout lives on the server. Open the dashboard on your phone or laptop, rearrange,
   and the kiosk updates live.
 - **Plugins.** Each widget is a folder in `plugins/` with a manifest, a React component and an optional server module.
@@ -66,6 +68,13 @@ Open `http://<pi-ip>:3210` from any device on your network to edit the layout.
 `install.sh` runs `raspi-config nonint do_blanking 1`. If the screen still sleeps, open
 *Raspberry Pi Configuration → Display → Screen Blanking → Off*. On X11 sessions `kiosk/start-kiosk.sh`
 also runs `xset s off -dpms`.
+
+## Themes & grid
+
+Edit mode → **Theme**. Pick a preset card, or open *Customise colours…* to set the background (any CSS value,
+including `url(...)` for a wallpaper), accent, text and tile colours, corner radius and whether tile titles show.
+The same dialog sets the grid: columns, rows, gap and screen padding. The grid always fills the screen exactly,
+so more rows just means finer placement.
 
 ## Configuring plugins
 

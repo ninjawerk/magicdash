@@ -53,7 +53,7 @@ export function Toolbar() {
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-2xl border border-white/10 bg-black/60 p-1.5 backdrop-blur-xl shadow-2xl transition-all duration-300 ${
+      className={`fixed bottom-4 right-4 z-50 flex items-center gap-1 surface-glass rounded-2xl border border-white/10 p-1.5 shadow-2xl transition-all duration-300 ${
         visible || editMode ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'
       }`}
     >
@@ -70,7 +70,7 @@ export function Toolbar() {
               <Puzzle size={16} /> Plugins
             </button>
             {pluginsOpen && (
-              <div className="absolute bottom-full right-0 mb-2 w-60 rounded-xl border border-white/10 bg-[#121826] p-1 shadow-2xl" onMouseLeave={() => setPluginsOpen(false)}>
+              <div className="absolute bottom-full right-0 mb-2 w-60 surface rounded-xl border border-white/10 p-1 shadow-2xl" onMouseLeave={() => setPluginsOpen(false)}>
                 {configurable.map((p) => (
                   <button
                     key={p.manifest.id}

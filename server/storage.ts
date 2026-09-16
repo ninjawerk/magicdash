@@ -54,6 +54,10 @@ export function defaultLayout(): DashboardLayout {
       tileBackground: 'rgba(255,255,255,0.05)',
       tileRadius: 22,
       showTitles: true,
+      fg: '#e7ebf3',
+      surface: '#121826',
+      dark: true,
+      preset: 'midnight',
     },
     widgets: [
       { id: 'w-clock', pluginId: 'clock', x: 0, y: 0, w: 4, h: 2, config: {} },

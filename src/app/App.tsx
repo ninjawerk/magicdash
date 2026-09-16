@@ -3,17 +3,14 @@ import { StoreProvider, useStore } from './lib/store';
 import { Dashboard } from './components/Dashboard';
 import { Dialogs } from './components/Dialogs';
 import { Toolbar } from './components/Toolbar';
+import { applyTheme, normalizeTheme } from './lib/themes';
 
 function Shell() {
   const { layout, error } = useStore();
 
   useEffect(() => {
     if (!layout) return;
-    const root = document.documentElement;
-    root.style.setProperty('--accent', layout.theme.accent);
-    root.style.setProperty('--tile-bg', layout.theme.tileBackground);
-    root.style.setProperty('--tile-radius', `${layout.theme.tileRadius}px`);
-    document.body.style.background = layout.theme.background;
+    applyTheme(normalizeTheme(layout.theme));
   }, [layout?.theme]);
 
   if (error) {

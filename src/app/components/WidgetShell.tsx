@@ -83,7 +83,7 @@ export function WidgetShell({ widget }: { widget: WidgetInstance }) {
 
       {editMode && (
         <div className="absolute inset-0 z-10 flex items-start justify-end p-2">
-          <div className="no-drag flex gap-1 rounded-lg bg-black/60 backdrop-blur p-1 shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="no-drag surface-glass flex gap-1 rounded-lg p-1 shadow-lg" onMouseDown={(e) => e.stopPropagation()}>
             <button className="btn btn-ghost p-2" title="Settings" onClick={openSettings}>
               <Settings2 size={16} />
             </button>

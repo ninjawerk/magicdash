@@ -25,7 +25,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onMouseDown={onClose}>
       <div
-        className="w-full max-h-[92vh] flex flex-col rounded-2xl border border-white/10 bg-[#121826] shadow-2xl"
+        className="surface w-full max-h-[92vh] flex flex-col rounded-2xl border border-white/10 shadow-2xl"
         style={{ maxWidth: width }}
         onMouseDown={(e) => e.stopPropagation()}
       >

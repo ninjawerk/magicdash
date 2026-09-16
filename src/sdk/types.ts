@@ -119,6 +119,14 @@ export interface DashboardLayout {
     tileRadius: number;
     /** Show the tile title bar on all tiles. */
     showTitles: boolean;
+    /** Main text colour. */
+    fg: string;
+    /** Dialog / toolbar background. */
+    surface: string;
+    /** Whether the theme is dark (affects native controls). */
+    dark: boolean;
+    /** Id of the preset this theme was based on, if any. */
+    preset?: string;
   };
 }
 

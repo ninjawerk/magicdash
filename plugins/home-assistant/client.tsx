@@ -45,7 +45,7 @@ function iconFor(s: HaState): { Icon: LucideIcon; color: string; active: boolean
   const domain = domainOf(s.entity_id);
   const dc = s.attributes.device_class;
   const on = s.state === 'on';
-  const dim = 'rgba(255,255,255,0.45)';
+  const dim = 'color-mix(in srgb, var(--fg) 45%, transparent)';
   switch (domain) {
     case 'light':
       return { Icon: Lightbulb, color: on ? '#ffd166' : dim, active: on };

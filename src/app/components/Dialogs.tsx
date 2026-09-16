@@ -6,6 +6,8 @@ import { getClientPlugin, listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
 import { Modal } from './Modal';
 import { SchemaForm } from './SchemaForm';
+import { THEME_PRESETS, applyTheme, normalizeTheme, stripPreset, type Theme } from '../lib/themes';
+import { Check } from 'lucide-react';
 
 export function Dialogs() {
   const { dialog, setDialog } = useStore();
@@ -186,10 +188,40 @@ function PluginSettingsDialog({ pluginId, onClose }: { pluginId: string; onClose
 const THEME_FIELDS: ConfigField[] = [
   { key: 'background', label: 'Background', type: 'textarea', rows: 2, help: 'Any CSS background: a color, gradient or url(...).' },
   { key: 'accent', label: 'Accent color', type: 'color' },
+  { key: 'fg', label: 'Text color', type: 'color' },
   { key: 'tileBackground', label: 'Tile background', type: 'string', help: 'e.g. rgba(255,255,255,0.05)' },
+  { key: 'surface', label: 'Dialog & toolbar background', type: 'color' },
   { key: 'tileRadius', label: 'Tile corner radius', type: 'number', min: 0, max: 60, unit: 'px' },
+  { key: 'dark', label: 'Dark theme (affects form controls)', type: 'boolean' },
   { key: 'showTitles', label: 'Show tile titles', type: 'boolean' },
 ];
+
+function PresetCard({ preset, active, onPick }: { preset: (typeof THEME_PRESETS)[number]; active: boolean; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      className={`group relative overflow-hidden rounded-xl border text-left transition ${active ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40' : 'border-white/10 hover:border-white/30'}`}
+      style={{ background: preset.background, color: preset.fg }}
+    >
+      <div className="flex gap-1.5 p-3 pb-2">
+        <div className="h-9 flex-1 rounded-md" style={{ background: preset.tileBackground, border: `1px solid ${preset.fg}22`, borderRadius: Math.min(10, preset.tileRadius / 2) }}>
+          <div className="m-2 h-1.5 w-1/2 rounded-full" style={{ background: preset.accent }} />
+        </div>
+        <div className="h-9 w-9 rounded-md" style={{ background: preset.tileBackground, border: `1px solid ${preset.fg}22`, borderRadius: Math.min(10, preset.tileRadius / 2) }} />
+      </div>
+      <div className="px-3 pb-2.5">
+        <div className="text-sm font-semibold leading-tight">{preset.name}</div>
+        <div className="text-[11px] opacity-60 leading-snug">{preset.description}</div>
+      </div>
+      {active && (
+        <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: preset.accent, color: '#0b0f17' }}>
+          <Check size={12} strokeWidth={3} />
+        </span>
+      )}
+    </button>
+  );
+}
 const GRID_FIELDS: ConfigField[] = [
   { key: 'cols', label: 'Columns', type: 'number', min: 4, max: 48 },
   { key: 'rows', label: 'Rows', type: 'number', min: 2, max: 32, help: 'The grid always fills the screen; more rows = finer control.' },
@@ -199,13 +231,33 @@ const GRID_FIELDS: ConfigField[] = [
 
 function ThemeDialog({ onClose }: { onClose: () => void }) {
   const { layout, updateLayout, apiFor } = useStore();
-  const [theme, setTheme] = useState<Record<string, unknown>>({ ...(layout?.theme ?? {}) });
+  const original = normalizeTheme(layout?.theme);
+  const [theme, setTheme] = useState<Record<string, unknown>>({ ...original });
   const [grid, setGrid] = useState<Record<string, unknown>>({ ...(layout?.grid ?? {}) });
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const api = apiFor('$host');
+
+  // Live preview while the dialog is open; revert on cancel.
+  useEffect(() => {
+    applyTheme(normalizeTheme(theme as Partial<Theme>));
+  }, [theme]);
+  const cancel = () => {
+    applyTheme(original);
+    onClose();
+  };
+  const pick = (id: string) => {
+    const p = THEME_PRESETS.find((x) => x.id === id);
+    if (p) setTheme({ ...stripPreset(p), showTitles: theme.showTitles ?? p.showTitles });
+  };
+  const changeField = (next: Record<string, unknown>) => {
+    // Manual edits detach from the preset unless they only touch showTitles.
+    const onlyTitles = Object.keys(next).every((k) => k === 'showTitles' || next[k] === theme[k]);
+    setTheme(onlyTitles ? next : { ...next, preset: undefined });
+  };
   const save = () => {
     updateLayout((l) => ({
       ...l,
-      theme: { ...l.theme, ...(theme as unknown as DashboardLayout['theme']) },
+      theme: normalizeTheme({ ...l.theme, ...(theme as unknown as DashboardLayout['theme']) }),
       grid: { ...l.grid, ...(grid as unknown as DashboardLayout['grid']) },
     }));
     onClose();
@@ -213,10 +265,12 @@ function ThemeDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal
       title="Appearance & grid"
-      onClose={onClose}
+      subtitle="Pick a theme, or fine-tune every colour. Changes preview live."
+      onClose={cancel}
+      width={720}
       footer={
         <>
-          <button className="btn btn-default" onClick={onClose}>
+          <button className="btn btn-default" onClick={cancel}>
             Cancel
           </button>
           <button className="btn btn-primary" onClick={save}>
@@ -228,7 +282,24 @@ function ThemeDialog({ onClose }: { onClose: () => void }) {
       <div className="space-y-8">
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Theme</h3>
-          <SchemaForm fields={THEME_FIELDS} value={theme} onChange={setTheme} api={api} />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {THEME_PRESETS.map((p) => (
+              <PresetCard key={p.id} preset={p} active={theme.preset === p.id} onPick={() => pick(p.id)} />
+            ))}
+          </div>
+          <button type="button" className="btn btn-ghost mt-3 text-xs" onClick={() => setShowAdvanced((v) => !v)}>
+            {showAdvanced ? 'Hide' : 'Customise colours…'}
+          </button>
+          {showAdvanced && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <SchemaForm fields={THEME_FIELDS} value={theme} onChange={changeField} api={api} />
+            </div>
+          )}
+          {!showAdvanced && (
+            <div className="mt-2">
+              <SchemaForm fields={THEME_FIELDS.filter((f) => f.key === 'showTitles')} value={theme} onChange={changeField} api={api} />
+            </div>
+          )}
         </section>
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Grid</h3>
