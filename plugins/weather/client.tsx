@@ -237,10 +237,10 @@ function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProp
           <div className="flex flex-nowrap gap-1.5 overflow-hidden">
             <Chip icon={<Thermometer size={12} />} color="#ff9f68" label="Feels" value={`${Math.round(cur.feelsLike)}°`} />
             <Chip icon={<Droplets size={12} />} color="#7cc4ff" label="Humidity" value={`${cur.humidity}%`} />
-            {W >= 360 && <Chip icon={<Wind size={12} />} color="#8be0c8" label="Wind" value={`${Math.round(cur.wind)} ${speed}`} />}
-            {W >= 430 && <Chip icon={<Sun size={12} />} color="#ffd166" label="UV" value={`${Math.round(cur.uv)}`} />}
-            {W >= 520 && today && <Chip icon={<Sunrise size={12} />} color="#ffb366" label="Sunrise" value={fmtTime(today.sunrise)} />}
-            {W >= 600 && today && <Chip icon={<Sunset size={12} />} color="#c3a6ff" label="Sunset" value={fmtTime(today.sunset)} />}
+            {W >= 400 && <Chip icon={<Wind size={12} />} color="#8be0c8" label="Wind" value={`${Math.round(cur.wind)} ${speed}`} />}
+            {W >= 470 && <Chip icon={<Sun size={12} />} color="#ffd166" label="UV" value={`${Math.round(cur.uv)}`} />}
+            {W >= 560 && today && <Chip icon={<Sunrise size={12} />} color="#ffb366" label="Sunrise" value={fmtTime(today.sunrise)} />}
+            {W >= 640 && today && <Chip icon={<Sunset size={12} />} color="#c3a6ff" label="Sunset" value={fmtTime(today.sunset)} />}
           </div>
         )}
 
@@ -314,7 +314,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProp
 
 function Chip({ icon, color, label, value }: { icon: React.ReactNode; color: string; label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1 text-xs">
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-black/20 px-2.5 py-1 text-xs">
       <span style={{ color }}>{icon}</span>
       <span className="text-white/50">{label}</span>
       <span className="font-semibold tabular">{value}</span>
