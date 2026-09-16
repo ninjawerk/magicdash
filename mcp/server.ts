@@ -3,9 +3,10 @@
  * MagicDash MCP server — lets an AI agent (Claude Code, Claude Desktop, Cursor…) inspect and edit a running
  * dashboard over its HTTP API: screens, tiles, themes, plugin settings, attention, backups, plugin scaffolding.
  *
- *   MAGICDASH_URL=http://magicdash.local:3210 npm run mcp        (stdio transport)
+ *   MAGICDASH_URL=http://magicdash.local:3210 MAGICDASH_TOKEN=md_… npm run mcp        (stdio transport)
  *
- * Claude Code:   claude mcp add magicdash -e MAGICDASH_URL=http://localhost:3210 -- npx tsx /path/to/magicdash/mcp/server.ts
+ * Claude Code:   claude mcp add magicdash -e MAGICDASH_URL=http://localhost:3210 -e MAGICDASH_TOKEN=md_… -- npx tsx /path/to/magicdash/mcp/server.ts
+ * Create the token under /admin → Settings → API tokens.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -15,10 +16,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const BASE = (process.env.MAGICDASH_URL ?? 'http://localhost:3210').replace(/\/$/, '');
+/** Admin API token (create one under /admin → Settings → API tokens). Needed for anything that changes state. */
+const TOKEN = process.env.MAGICDASH_TOKEN;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 async function api<T = unknown>(method: string, p: string, body?: unknown): Promise<T> {
-  const r = await fetch(`${BASE}${p}`, { method, headers: body === undefined ? {} : { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const headers: Record<string, string> = body === undefined ? {} : { 'content-type': 'application/json' };
+  if (TOKEN) headers.authorization = `Bearer ${TOKEN}`;
+  const r = await fetch(`${BASE}${p}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const text = await r.text();
   let data: unknown = text;
   try {

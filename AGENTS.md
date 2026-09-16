@@ -60,6 +60,18 @@ ctx: { manifest, router, settings{get,set,onChange}, cache{wrap,get,set,delete},
 ```
 Cache upstream calls (`ctx.cache.wrap(key, ttlMs, fn)`); thrown errors become `{ error }` 500s the widget shows.
 
+## Admin panel & auth
+
+`/admin` is the same SPA (`src/app/admin/AdminApp.tsx`, routed by pathname) with a sidebar and pages that embed the existing
+dialogs via `InlineModalContext` (Modal renders as a plain panel). Auth (`server/auth.ts`): one scrypt-hashed admin password
+in `data/auth.json`, HMAC-signed session cookie `md_session` (30 d), bearer API tokens (hashed, shown once). `requireAuth`
+protects every `/api/*` route except the public allowlist in `auth.ts` (kiosk reads, plugin backends, SSE, `screens/show`,
+`attention`). The store exposes `auth`, `login`, `logout`, `setup`; the kiosk's edit mode opens the login dialog when
+unauthenticated, and a 401 on save drops back out of edit mode. Logs: `server/logs.ts` wraps `console.*` into a 1000-line
+ring buffer streamed as `$host/log`. Updates: `server/update.ts` (`git fetch` compare + GitHub latest release; run =
+`git pull --ff-only` → `npm ci` → `npm run build` → exit in prod, streamed as `$host/update`). MCP passes `MAGICDASH_TOKEN`
+as a bearer token.
+
 ## Catalog
 
 `server/catalog.ts` downloads one or more JSON indexes (`$host.catalogSources` in data/settings.json, default the
@@ -91,4 +103,4 @@ There is no unit-test suite yet; verify routes with curl and widgets in the brow
 
 Use the MCP server (`npm run mcp`, env `MAGICDASH_URL`) or the HTTP API directly. Everything the UI can do is available:
 layout PUT, settings PUT, `/api/screens/show`, `/api/attention`, `/api/export`, `/api/import`, `/api/plugins/install`, `/api/plugins/rebuild`.
-The dashboard has no authentication — keep it on a trusted LAN.
+Mutating routes need an admin session or an API token (`/admin → Settings`); the MCP reads it from `MAGICDASH_TOKEN`.

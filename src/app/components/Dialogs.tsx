@@ -28,6 +28,8 @@ export function Dialogs() {
       return <InstallPluginDialog onClose={close} />;
     case 'screens':
       return <ScreensDialog onClose={close} />;
+    case 'login':
+      return <LoginDialog onClose={close} />;
     default:
       return null;
   }
@@ -35,7 +37,7 @@ export function Dialogs() {
 
 // ---------------------------------------------------------------------------
 
-function AddWidgetDialog({ onClose }: { onClose: () => void }) {
+export function AddWidgetDialog({ onClose }: { onClose: () => void }) {
   const { addWidget, setDialog } = useStore();
   const plugins = listClientPlugins();
   return (
@@ -85,7 +87,7 @@ function AddWidgetDialog({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------------------
 
-function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; onClose: () => void }) {
+export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; onClose: () => void }) {
   const { getWidget, updateWidget, apiFor, setDialog } = useStore();
   const widget = getWidget(widgetId)?.widget;
   const plugin = widget ? getClientPlugin(widget.pluginId) : undefined;
@@ -135,7 +137,7 @@ function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; onClose
 
 // ---------------------------------------------------------------------------
 
-function PluginSettingsDialog({ pluginId, onClose }: { pluginId: string; onClose: () => void }) {
+export function PluginSettingsDialog({ pluginId, onClose }: { pluginId: string; onClose: () => void }) {
   const { apiFor, reloadPluginSettings } = useStore();
   const plugin = getClientPlugin(pluginId);
   const [draft, setDraft] = useState<Record<string, unknown>>();
@@ -248,7 +250,7 @@ const GRID_FIELDS: ConfigField[] = [
   { key: 'padding', label: 'Screen padding', type: 'number', min: 0, max: 120, unit: 'px' },
 ];
 
-function ThemeDialog({ onClose }: { onClose: () => void }) {
+export function ThemeDialog({ onClose }: { onClose: () => void }) {
   const { layout, updateLayout, apiFor } = useStore();
   const original = normalizeTheme(layout?.theme);
   const [theme, setTheme] = useState<Record<string, unknown>>({ ...original });
@@ -340,7 +342,7 @@ interface BackupFile {
   pluginFiles?: Record<string, string>;
 }
 
-function BackupDialog({ onClose }: { onClose: () => void }) {
+export function BackupDialog({ onClose }: { onClose: () => void }) {
   const { reloadPluginSettings } = useStore();
   const [dataDir, setDataDir] = useState<string>();
   const [withSecrets, setWithSecrets] = useState(true);
@@ -486,7 +488,7 @@ async function readFolder(list: FileList): Promise<Array<{ path: string; content
 
 type CatalogItem = Awaited<ReturnType<typeof hostApi.catalog>>['items'][number];
 
-function InstallPluginDialog({ onClose }: { onClose: () => void }) {
+export function InstallPluginDialog({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<'browse' | 'upload' | 'installed'>('browse');
   const [catalog, setCatalog] = useState<Awaited<ReturnType<typeof hostApi.catalog>>>();
   const [catalogError, setCatalogError] = useState<string>();
@@ -882,7 +884,7 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------------------
 
-function ScreensDialog({ onClose }: { onClose: () => void }) {
+export function ScreensDialog({ onClose }: { onClose: () => void }) {
   const { layout, updateLayout, addScreen, removeScreen, renameScreen, moveScreen, activeScreenId, showScreen, apiFor } = useStore();
   const [rotation, setRotation] = useState<Record<string, unknown>>({ ...(layout?.rotation ?? {}) });
   const api = apiFor('$host');
@@ -959,6 +961,63 @@ function ScreensDialog({ onClose }: { onClose: () => void }) {
           </p>
         </section>
       </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** Sign-in prompt used by the kiosk when entering edit mode. */
+export function LoginDialog({ onClose }: { onClose: () => void }) {
+  const { auth, login, setEditMode } = useStore();
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  // The "E" that opened this dialog would otherwise land in the focused field.
+  useEffect(() => {
+    const t = setTimeout(() => setPw(''), 60);
+    return () => clearTimeout(t);
+  }, []);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(undefined);
+    try {
+      await login(pw);
+      setEditMode(true);
+      onClose();
+    } catch (e2) {
+      setErr((e2 as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal title="Sign in to edit" subtitle={auth.configured ? 'Enter the admin password.' : 'No admin password is set yet.'} onClose={onClose} width={420}>
+      {auth.configured ? (
+        <form onSubmit={submit} className="space-y-4">
+          <input className="input" type="password" autoFocus placeholder="Admin password" value={pw} onChange={(e) => setPw(e.target.value)} />
+          {err && <p className="text-xs text-red-300">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn btn-default" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={busy || !pw}>
+              {busy && <Loader2 className="animate-spin" size={14} />} Sign in
+            </button>
+          </div>
+          <p className="text-xs text-white/40">
+            Manage everything at <a className="underline" href="/admin">/admin</a>.
+          </p>
+        </form>
+      ) : (
+        <div className="space-y-3 text-sm">
+          <p className="text-white/70">Set one in the admin panel first.</p>
+          <a className="btn btn-primary" href="/admin">
+            Open admin panel
+          </a>
+        </div>
+      )}
     </Modal>
   );
 }
