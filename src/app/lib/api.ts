@@ -51,6 +51,13 @@ export const hostApi = {
   setDisplay: (b: { on?: boolean; brightness?: number; forSeconds?: number; clear?: boolean }) => post<{ ok: true }>('/api/display', b),
   saveDisplaySettings: (s: unknown) => fetch('/api/display/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(s) }).then(json<{ ok: true }>),
   notify: (t: { message: string; title?: string; level?: string; durationSec?: number; icon?: string }) => post<{ ok: true }>('/api/notify', t),
+  devices: () =>
+    fetch('/api/devices').then(
+      json<Array<{ id: string; name: string; online: boolean; firstSeen: string; lastSeen: string; ip?: string; userAgent?: string; viewport?: { width: number; height: number }; currentScreen?: string; appVersion?: string; config: { screens?: string[]; rotation?: { enabled: boolean; intervalSec: number }; brightness?: number; power?: 'auto' | 'on' | 'off' } }>>,
+    ),
+  updateDevice: (id: string, body: { name?: string; config?: unknown }) => fetch(`/api/devices/${id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).then(json<{ ok: true }>),
+  forgetDevice: (id: string) => fetch(`/api/devices/${id}`, { method: 'DELETE' }).then(json<{ ok: true }>),
+  deviceAction: (id: string, action: 'identify' | 'reload' | 'show', screenId?: string) => post<{ ok: true }>(`/api/devices/${id}/action`, { action, screenId }),
   systemInfo: () =>
     fetch('/api/system/info').then(
       json<{ version: string; node: string; platform: string; hostname: string; uptimeSec: number; systemUptimeSec: number; memory: { total: number; free: number; rss: number }; load: number[]; cpuTemp?: number; prod: boolean; cwd: string }>,

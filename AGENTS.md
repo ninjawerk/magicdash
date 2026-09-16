@@ -72,6 +72,14 @@ ring buffer streamed as `$host/log`. Updates: `server/update.ts` (`git fetch` co
 `git pull --ff-only` → `npm ci` → `npm run build` → exit in prod, streamed as `$host/update`). MCP passes `MAGICDASH_TOKEN`
 as a bearer token.
 
+## Devices (output displays)
+
+`server/devices.ts`: kiosks POST `/api/devices/heartbeat` every 30 s (public) with id/name/current screen/viewport;
+the registry lives in data/devices.json. Identity: `?device=<id>` in the URL (kiosk script uses the hostname) or a
+generated id in localStorage; the admin page is never a device. Per-device config (screens subset, rotation override,
+brightness, power auto/on/off) is returned by the heartbeat and pushed as `$host/device`. Host events `showScreen`,
+`attention`, `notify`, `reload` may carry `deviceId` (id or name); the store ignores ones addressed elsewhere.
+
 ## Dashboard context
 
 `layout.context` (`DashboardContext`: location, name, units) is edited under Appearance → Dashboard and passed to every

@@ -2,6 +2,9 @@
 # Launches Chromium full-screen on the MagicDash server and keeps it running.
 # Called from the desktop session's autostart (labwc / Wayfire / LXDE).
 URL="${MAGICDASH_URL:-http://localhost:3210}"
+# Stable device identity for the admin Devices page (override with MAGICDASH_DEVICE).
+DEVICE="${MAGICDASH_DEVICE:-$(hostname | tr -c 'a-zA-Z0-9_-\n' '-')}"
+PAGE="$URL/?device=$DEVICE"
 PROFILE="$HOME/.config/magicdash-kiosk"
 LOG="$HOME/.local/state/magicdash-kiosk.log"
 mkdir -p "$(dirname "$LOG")" "$PROFILE"
@@ -11,12 +14,12 @@ echo "[$(date -Is)] kiosk starting → $URL (WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-
 # Wait briefly for the server. If it isn't up yet (first boot of the flashed image is still installing),
 # open the local waiting page instead — it polls the server and jumps to the dashboard when it answers.
 HERE=$(cd "$(dirname "$0")" && pwd)
-OPEN_URL="$URL"
+OPEN_URL="$PAGE"
 for _ in $(seq 1 15); do
   curl -fs "$URL/api/health" >/dev/null 2>&1 && break
   sleep 1
 done
-curl -fs "$URL/api/health" >/dev/null 2>&1 || OPEN_URL="file://$HERE/waiting.html?url=$URL&host=$(hostname)"
+curl -fs "$URL/api/health" >/dev/null 2>&1 || OPEN_URL="file://$HERE/waiting.html?url=$(printf %s "$PAGE" | sed 's/&/%26/g')&host=$(hostname)"
 
 # X11 only: never blank the screen, hide the idle cursor. (Wayland blanking is handled by raspi-config.)
 if [ -n "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
@@ -42,7 +45,7 @@ while true; do
   sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' \
     "$PROFILE/Default/Preferences" 2>/dev/null || true
   "$BROWSER" "${FLAGS[@]}" "$OPEN_URL"
-  OPEN_URL="$URL"
+  OPEN_URL="$PAGE"
   echo "[$(date -Is)] chromium exited ($?) — restarting in 3s"
   sleep 3
 done

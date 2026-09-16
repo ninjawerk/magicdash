@@ -14,6 +14,7 @@ import { installLogCapture, registerLogRoutes } from './logs';
 import { registerUpdateRoutes } from './update';
 import { registerNotifyRoutes } from './notify';
 import { reevaluateDisplay, registerDisplayRoutes, startDisplay } from './display';
+import { loadDevices, registerDeviceRoutes, resolveDeviceId } from './devices';
 import { HOST_VERSION } from './version';
 import { SDK_VERSION } from '../src/sdk/types';
 
@@ -45,7 +46,7 @@ function secretKeys(fields: ConfigField[] | undefined): Set<string> {
 
 async function main() {
   installLogCapture();
-  await Promise.all([layoutStore.load(), settingsStore.load(), loadAuth()]);
+  await Promise.all([layoutStore.load(), settingsStore.load(), loadAuth(), loadDevices()]);
   const publicUrl = detectPublicUrl();
   await loadPlugins(() => publicUrl);
 
@@ -165,13 +166,13 @@ async function main() {
   // --- Host controls (used by the MCP server and by automations, e.g. a Home Assistant curl) --------
   /** POST /api/screens/show { screenId } — switch every connected dashboard to a screen (no lock). */
   app.post('/api/screens/show', (req, res) => {
-    const { screenId } = (req.body ?? {}) as { screenId?: string };
+    const { screenId, deviceId } = (req.body ?? {}) as { screenId?: string; deviceId?: string };
     const screen = layoutStore.get().screens.find((s) => s.id === screenId || s.name.toLowerCase() === String(screenId).toLowerCase());
     if (!screen) {
       res.status(404).json({ error: 'No such screen' });
       return;
     }
-    broadcast({ plugin: '$host', event: 'showScreen', payload: { screenId: screen.id } });
+    broadcast({ plugin: '$host', event: 'showScreen', payload: { screenId: screen.id, deviceId: resolveDeviceId(deviceId) } });
     res.json({ ok: true, screenId: screen.id });
   });
 
@@ -180,16 +181,16 @@ async function main() {
    * Same lock rules as plugins: one holder, 120 s max. `holder` defaults to "api".
    */
   app.post('/api/attention', (req, res) => {
-    const { action = 'request', screenId, holder = 'api', reason } = (req.body ?? {}) as { action?: string; screenId?: string; holder?: string; reason?: string };
+    const { action = 'request', screenId, holder = 'api', reason, deviceId } = (req.body ?? {}) as { action?: string; screenId?: string; holder?: string; reason?: string; deviceId?: string };
     if (action === 'request') {
       const screen = layoutStore.get().screens.find((s) => s.id === screenId || s.name.toLowerCase() === String(screenId).toLowerCase());
       if (!screen) {
         res.status(404).json({ error: 'No such screen' });
         return;
       }
-      broadcast({ plugin: '$host', event: 'attention', payload: { action, screenId: screen.id, holder: `api:${holder}`, reason } });
+      broadcast({ plugin: '$host', event: 'attention', payload: { action, screenId: screen.id, holder: `api:${holder}`, reason, deviceId: resolveDeviceId(deviceId) } });
     } else {
-      broadcast({ plugin: '$host', event: 'attention', payload: { action: 'release', holder: `api:${holder}` } });
+      broadcast({ plugin: '$host', event: 'attention', payload: { action: 'release', holder: `api:${holder}`, deviceId: resolveDeviceId(deviceId) } });
     }
     res.json({ ok: true, note: 'Delivered to connected dashboards; each enforces the lock locally.' });
   });
@@ -226,6 +227,7 @@ async function main() {
   registerUpdateRoutes(app);
   registerNotifyRoutes(app);
   registerDisplayRoutes(app);
+  registerDeviceRoutes(app);
   await startDisplay();
 
   // --- Plugin routers -----------------------------------------------------------

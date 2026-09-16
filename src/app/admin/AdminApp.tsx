@@ -9,6 +9,7 @@ import {
   Loader2,
   LogOut,
   MonitorCog,
+  MonitorSmartphone,
   Palette,
   Puzzle,
   ScrollText,
@@ -25,12 +26,13 @@ import { ScreensPage } from './pages/ScreensPage';
 import { PluginsPage } from './pages/PluginsPage';
 import { AppearancePage } from './pages/AppearancePage';
 import { DisplayPage } from './pages/DisplayPage';
+import { DevicesPage } from './pages/DevicesPage';
 import { BackupPage } from './pages/BackupPage';
 import { LogsPage } from './pages/LogsPage';
 import { UpdatesPage } from './pages/UpdatesPage';
 import { SettingsPage } from './pages/SettingsPage';
 
-export type Route = 'overview' | 'layout' | 'screens' | 'plugins' | 'appearance' | 'display' | 'backup' | 'logs' | 'updates' | 'settings';
+export type Route = 'overview' | 'layout' | 'screens' | 'plugins' | 'appearance' | 'display' | 'devices' | 'backup' | 'logs' | 'updates' | 'settings';
 
 const NAV: Array<{ id: Route; label: string; icon: typeof Activity; group?: string }> = [
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -39,6 +41,7 @@ const NAV: Array<{ id: Route; label: string; icon: typeof Activity; group?: stri
   { id: 'plugins', label: 'Plugins', icon: Puzzle },
   { id: 'appearance', label: 'Appearance', icon: Palette },
   { id: 'display', label: 'Display', icon: MonitorCog },
+  { id: 'devices', label: 'Devices', icon: MonitorSmartphone },
   { id: 'backup', label: 'Backup', icon: DatabaseBackup, group: 'System' },
   { id: 'logs', label: 'Logs', icon: ScrollText },
   { id: 'updates', label: 'Updates', icon: ArrowUpCircle },
@@ -95,6 +98,7 @@ export function AdminApp() {
     plugins: <PluginsPage />,
     appearance: <AppearancePage />,
     display: <DisplayPage />,
+    devices: <DevicesPage />,
     backup: <BackupPage />,
     logs: <LogsPage />,
     updates: <UpdatesPage />,
