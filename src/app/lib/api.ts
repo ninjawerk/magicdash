@@ -27,6 +27,19 @@ export const hostApi = {
       body: JSON.stringify(settings),
     }).then(json<{ ok: true }>),
   health: () => fetch('/api/health').then(json<{ ok: boolean; plugins: string[]; publicUrl: string; dataDir: string; addresses: string[] }>),
+  installedPlugins: () =>
+    fetch('/api/plugins/installed').then(json<Array<{ id: string; name: string; version?: string; source: 'bundled' | 'custom'; loaded: boolean }>>),
+  uploadEnabled: () => fetch('/api/plugins/upload-enabled').then(json<{ enabled: boolean; prod: boolean }>),
+  installPluginFiles: (files: Array<{ path: string; content: string; encoding?: 'utf8' | 'base64' }>, replace: boolean) =>
+    fetch('/api/plugins/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ files, replace }) }).then(
+      json<{ ok: true; id: string; name?: string; files: number; replaced: boolean; prod: boolean }>,
+    ),
+  installPluginZip: (zip: File, replace: boolean) =>
+    fetch(`/api/plugins/install?replace=${replace ? 1 : 0}`, { method: 'POST', headers: { 'content-type': 'application/zip' }, body: zip }).then(
+      json<{ ok: true; id: string; name?: string; files: number; replaced: boolean; prod: boolean }>,
+    ),
+  removePlugin: (id: string) => fetch(`/api/plugins/${id}`, { method: 'DELETE' }).then(json<{ ok: true; prod: boolean }>),
+  rebuild: () => fetch('/api/plugins/rebuild', { method: 'POST' }).then(json<{ ok: true; restarting: boolean }>),
   exportUrl: (secrets: boolean) => `/api/export?secrets=${secrets ? 1 : 0}`,
   importBackup: (backup: unknown, opts: { layout: boolean; settings: boolean }) =>
     fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ backup, ...opts }) }).then(

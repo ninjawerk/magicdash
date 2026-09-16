@@ -7,6 +7,7 @@ import { addSseClient, broadcast, clientCount } from './events';
 import { allPlugins, getPlugin, getPluginSettings, loadPlugins, setPluginSettings, shutdownPlugins } from './plugins';
 import { DATA_DIR, layoutStore, settingsStore } from './storage';
 import { createBackup, restoreBackup, validateBackup } from './backup';
+import { registerInstallRoutes } from './install';
 
 const PORT = Number(process.env.MAGICDASH_PORT ?? 3210);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -134,6 +135,9 @@ async function main() {
       res.status(500).json({ error: (e as Error).message });
     }
   });
+
+  // --- Plugin install / remove / rebuild ---------------------------------------------
+  registerInstallRoutes(app);
 
   // --- Plugin routers -----------------------------------------------------------
   for (const p of allPlugins()) {

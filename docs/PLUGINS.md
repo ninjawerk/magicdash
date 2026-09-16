@@ -198,7 +198,31 @@ in `error` from `usePluginQuery`.
 - **Async options for pickers:** a route returning `SelectOption[]` plus `optionsFrom` in the manifest.
 - **No server at all:** the clock plugin is client-only. Delete `server.ts` and the host still mounts a router that 404s.
 
-## 4. Checklist before sharing
+## 4. Sharing and installing plugins
+
+**Pack** a plugin into a zip:
+
+```bash
+npm run pack-plugin my-widget      # → my-widget-1.0.0.zip
+```
+
+**Install** on any dashboard: *Edit → Add → Install a plugin…* and upload the `.zip` (or the folder itself).
+The server writes it to `plugins/<id>/`, runs `npm run build`, and restarts, so the new tile appears in the
+Add dialog about a minute later on a Pi 4. Custom plugins can be removed from the same dialog.
+
+Or by hand / over SSH:
+
+```bash
+scp -r my-widget pi@raspberrypi.local:~/magicdash/plugins/
+ssh pi@raspberrypi.local 'cd ~/magicdash && npm run build && sudo systemctl restart magicdash'
+```
+
+Installing a plugin runs its code on the Pi with the dashboard's permissions, so only install plugins you trust.
+Set `MAGICDASH_PLUGIN_UPLOAD=off` in the systemd unit to disable upload from the browser.
+
+Plugin ids must be kebab-case, and the six bundled ids can't be replaced by upload.
+
+## 5. Checklist before sharing
 
 - [ ] `id` equals the folder name; `version` bumped
 - [ ] Works at the `minSize` you declared and at 12×8

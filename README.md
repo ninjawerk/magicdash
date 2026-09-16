@@ -176,13 +176,23 @@ kiosk/         Pi install script, systemd unit, Chromium kiosk launcher
 data/          Runtime state (layout.json, settings.json, plugin data) — git-ignored
 ```
 
+## Installing a custom plugin
+
+*Edit → Add → Install a plugin…* and upload a plugin `.zip` or folder. The dashboard writes it to `plugins/`,
+rebuilds and restarts itself; the new widget then shows up in the Add dialog. Custom plugins can be removed from
+the same dialog. Only install plugins you trust — they run on the Pi. Disable browser upload with
+`MAGICDASH_PLUGIN_UPLOAD=off` in the systemd unit.
+
+Manual alternative: copy the folder into `plugins/`, then `npm run build && sudo systemctl restart magicdash`.
+
 ## Writing a plugin
 
 ```bash
-npm run new-plugin my-widget "My Widget"
+npm run new-plugin my-widget "My Widget"   # scaffold from plugins/_template
+npm run pack-plugin my-widget              # zip it up to share
 ```
 
-That copies `plugins/_template` and you're off. Full guide: [docs/PLUGINS.md](docs/PLUGINS.md).
+Full guide: [docs/PLUGINS.md](docs/PLUGINS.md).
 
 ## Scripts
 
@@ -193,5 +203,7 @@ That copies `plugins/_template` and you're off. Full guide: [docs/PLUGINS.md](do
 | `npm start` | production server (serves `dist/` and the API on `MAGICDASH_PORT`, default 3210) |
 | `npm run typecheck` | TypeScript check across host, SDK and plugins |
 | `npm run new-plugin <id>` | scaffold a plugin |
+| `npm run pack-plugin <id>` | zip a plugin for sharing / uploading |
 
-Environment: `MAGICDASH_PORT` (3210), `MAGICDASH_DATA` (`./data`), `PUBLIC_URL` (used for OAuth redirects when set).
+Environment: `MAGICDASH_PORT` (3210), `MAGICDASH_DATA` (`./data`), `PUBLIC_URL` (used for OAuth redirects when set),
+`MAGICDASH_PLUGIN_UPLOAD=off` (disable installing plugins from the browser).

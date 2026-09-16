@@ -11,7 +11,8 @@ export type DialogState =
   | { kind: 'widget'; widgetId: string }
   | { kind: 'plugin'; pluginId: string }
   | { kind: 'theme' }
-  | { kind: 'backup' };
+  | { kind: 'backup' }
+  | { kind: 'install' };
 
 interface Store {
   layout: DashboardLayout | undefined;

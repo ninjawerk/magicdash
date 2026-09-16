@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, DatabaseBackup, LayoutGrid, MonitorSmartphone, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
+import { Check, DatabaseBackup, LayoutGrid, MonitorSmartphone, PackagePlus, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
 import { hostApi } from '../lib/api';
 import { listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
@@ -79,6 +79,15 @@ export function Toolbar() {
             </button>
             {pluginsOpen && (
               <div className="absolute bottom-full right-0 mb-2 w-60 surface rounded-xl border border-white/10 p-1 shadow-2xl" onMouseLeave={() => setPluginsOpen(false)}>
+                <button
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-white/10 border-b border-white/10 mb-1"
+                  onClick={() => {
+                    setPluginsOpen(false);
+                    setDialog({ kind: 'install' });
+                  }}
+                >
+                  <PackagePlus size={14} /> Install a plugin…
+                </button>
                 {configurable.map((p) => (
                   <button
                     key={p.manifest.id}

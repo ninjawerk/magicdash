@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Download, FolderOpen, Loader2, Settings2, Upload } from 'lucide-react';
+import { Download, FolderOpen, Loader2, PackagePlus, Settings2, Trash2, Upload } from 'lucide-react';
+import { subscribeEvents } from '@sdk/client';
 import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
 import { hostApi } from '../lib/api';
 import { getClientPlugin, listClientPlugins } from '../lib/registry';
@@ -23,6 +24,8 @@ export function Dialogs() {
       return <ThemeDialog onClose={close} />;
     case 'backup':
       return <BackupDialog onClose={close} />;
+    case 'install':
+      return <InstallPluginDialog onClose={close} />;
     default:
       return null;
   }
@@ -34,7 +37,17 @@ function AddWidgetDialog({ onClose }: { onClose: () => void }) {
   const { addWidget, setDialog } = useStore();
   const plugins = listClientPlugins();
   return (
-    <Modal title="Add a widget" subtitle="Pick a plugin. You can add the same plugin several times with different settings." onClose={onClose} width={680}>
+    <Modal
+      title="Add a widget"
+      subtitle="Pick a plugin. You can add the same plugin several times with different settings."
+      onClose={onClose}
+      width={680}
+      footer={
+        <button className="btn btn-default mr-auto" onClick={() => setDialog({ kind: 'install' })}>
+          <PackagePlus size={14} /> Install a plugin…
+        </button>
+      }
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
         {plugins.map((p) => (
           <div key={p.manifest.id} className="group rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition p-4 flex flex-col gap-2">
@@ -439,6 +452,231 @@ function BackupDialog({ onClose }: { onClose: () => void }) {
               </button>
             </div>
           )}
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+type InstalledPlugin = { id: string; name: string; version?: string; source: 'bundled' | 'custom'; loaded: boolean };
+
+async function readFolder(list: FileList): Promise<Array<{ path: string; content: string; encoding?: 'utf8' | 'base64' }>> {
+  const files: Array<{ path: string; content: string; encoding?: 'utf8' | 'base64' }> = [];
+  for (const f of Array.from(list)) {
+    const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name;
+    if (rel.split('/').some((seg) => seg.startsWith('.') || seg === 'node_modules')) continue;
+    const binary = /\.(png|jpe?g|webp|gif|ico|woff2?)$/i.test(rel);
+    if (binary) {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      let bin = '';
+      buf.forEach((b) => (bin += String.fromCharCode(b)));
+      files.push({ path: rel, content: btoa(bin), encoding: 'base64' });
+    } else {
+      files.push({ path: rel, content: await f.text(), encoding: 'utf8' });
+    }
+  }
+  return files;
+}
+
+function InstallPluginDialog({ onClose }: { onClose: () => void }) {
+  const [installed, setInstalled] = useState<InstalledPlugin[]>([]);
+  const [enabled, setEnabled] = useState<{ enabled: boolean; prod: boolean }>();
+  const [replace, setReplace] = useState(false);
+  const [busy, setBusy] = useState<string>();
+  const [error, setError] = useState<string>();
+  const [log, setLog] = useState<string[]>([]);
+  const [stage, setStage] = useState<'idle' | 'uploading' | 'building' | 'restarting' | 'done' | 'dev-done'>('idle');
+  const [pendingRebuild, setPendingRebuild] = useState(false);
+
+  const refresh = () => hostApi.installedPlugins().then(setInstalled).catch(() => undefined);
+  useEffect(() => {
+    refresh();
+    hostApi.uploadEnabled().then(setEnabled).catch(() => setEnabled({ enabled: false, prod: false }));
+  }, []);
+  useEffect(
+    () =>
+      subscribeEvents((ev) => {
+        if (ev.plugin !== '$host') return;
+        if (ev.event === 'build') setLog((l) => [...l.slice(-200), (ev.payload as { line: string }).line]);
+        if (ev.event === 'restarting') setStage('restarting');
+      }),
+    [],
+  );
+
+  const waitForServer = async () => {
+    // The server exits after a build in production; poll until it's back, then reload to pick up the new bundle.
+    await new Promise((r) => setTimeout(r, 1500));
+    for (let i = 0; i < 90; i++) {
+      try {
+        await hostApi.health();
+        window.location.reload();
+        return;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    setError('The server did not come back. Check: journalctl -u magicdash -e');
+  };
+
+  const runRebuild = async () => {
+    setError(undefined);
+    setLog([]);
+    setStage('building');
+    setBusy('Building…');
+    try {
+      const r = await hostApi.rebuild();
+      setPendingRebuild(false);
+      if (r.restarting) {
+        setStage('restarting');
+        setBusy('Restarting server…');
+        await waitForServer();
+      } else {
+        setStage('dev-done');
+        setBusy(undefined);
+      }
+    } catch (e) {
+      setStage('idle');
+      setBusy(undefined);
+      setError((e as Error).message);
+    }
+  };
+
+  const afterInstall = async (r: { id: string; name?: string; files: number; replaced: boolean }) => {
+    setLog((l) => [...l, `Installed ${r.name ?? r.id} (${r.files} files${r.replaced ? ', replaced' : ''}) to plugins/${r.id}/`]);
+    await refresh();
+    setPendingRebuild(true);
+    await runRebuild();
+  };
+
+  const onZip = async (f: File | undefined) => {
+    if (!f) return;
+    setError(undefined);
+    setStage('uploading');
+    setBusy('Uploading…');
+    try {
+      await afterInstall(await hostApi.installPluginZip(f, replace));
+    } catch (e) {
+      setStage('idle');
+      setBusy(undefined);
+      setError((e as Error).message);
+    }
+  };
+  const onFolder = async (list: FileList | null) => {
+    if (!list?.length) return;
+    setError(undefined);
+    setStage('uploading');
+    setBusy('Uploading…');
+    try {
+      const files = await readFolder(list);
+      await afterInstall(await hostApi.installPluginFiles(files, replace));
+    } catch (e) {
+      setStage('idle');
+      setBusy(undefined);
+      setError((e as Error).message);
+    }
+  };
+  const remove = async (p: InstalledPlugin) => {
+    if (!confirm(`Remove plugin "${p.name}"? Tiles using it will show as missing until you add another plugin.`)) return;
+    setError(undefined);
+    try {
+      await hostApi.removePlugin(p.id);
+      await refresh();
+      setLog((l) => [...l, `Removed plugins/${p.id}/`]);
+      setPendingRebuild(true);
+      await runRebuild();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const custom = installed.filter((p) => p.source === 'custom');
+  const working = !!busy;
+
+  return (
+    <Modal title="Install a plugin" subtitle="Add a plugin folder or .zip. The app rebuilds and reloads itself." onClose={onClose} width={640}>
+      <div className="space-y-6">
+        {enabled && !enabled.enabled && (
+          <p className="rounded-lg bg-amber-500/10 border border-amber-400/30 p-3 text-sm text-amber-100">
+            Plugin upload is turned off on this server (<code className="font-mono text-xs">MAGICDASH_PLUGIN_UPLOAD=off</code>). Copy the folder into{' '}
+            <code className="font-mono text-xs">plugins/</code> and rebuild instead.
+          </p>
+        )}
+
+        <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-sm text-white/70">
+            A plugin is a folder with <code className="font-mono text-xs">manifest.ts</code>, <code className="font-mono text-xs">client.tsx</code> and optionally{' '}
+            <code className="font-mono text-xs">server.ts</code>. Share one with <code className="font-mono text-xs">npm run pack-plugin &lt;id&gt;</code>. Only install plugins you
+            trust — they run on this machine.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <label className={`btn btn-primary ${working || enabled?.enabled === false ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+              <Upload size={14} /> Upload .zip
+              <input type="file" accept=".zip,application/zip" className="hidden" onChange={(e) => onZip(e.target.files?.[0])} />
+            </label>
+            <label className={`btn btn-default ${working || enabled?.enabled === false ? 'opacity-40 pointer-events-none' : 'cursor-pointer'}`}>
+              <FolderOpen size={14} /> Upload folder
+              <input
+                type="file"
+                className="hidden"
+                // @ts-expect-error non-standard but supported by Chromium/Safari/Firefox
+                webkitdirectory=""
+                multiple
+                onChange={(e) => onFolder(e.target.files)}
+              />
+            </label>
+            <label className="ml-auto flex items-center gap-2 text-xs text-white/60 cursor-pointer">
+              <input type="checkbox" className="accent-[var(--accent)]" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace if already installed
+            </label>
+          </div>
+          {error && <p className="mt-3 text-xs text-red-300 whitespace-pre-wrap">{error}</p>}
+          {busy && (
+            <p className="mt-3 flex items-center gap-2 text-sm text-white/70">
+              <Loader2 className="animate-spin" size={14} /> {busy}
+            </p>
+          )}
+          {stage === 'dev-done' && (
+            <p className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-3 text-xs text-emerald-100">
+              Built. You’re running the dev server, so restart <code className="font-mono">npm run dev</code> to load the plugin’s backend, then reload this page.
+            </p>
+          )}
+          {pendingRebuild && !working && stage !== 'dev-done' && (
+            <button className="btn btn-default mt-3" onClick={runRebuild}>
+              Rebuild & restart now
+            </button>
+          )}
+          {log.length > 0 && (
+            <pre className="mt-3 max-h-40 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/70 whitespace-pre-wrap">{log.join('\n')}</pre>
+          )}
+        </section>
+
+        <section>
+          <h3 className="text-sm font-semibold mb-2 text-white/70">Installed plugins</h3>
+          <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
+            {installed.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span className="min-w-0 flex-1">
+                  <span className="font-medium">{p.name}</span>
+                  <span className="ml-2 font-mono text-xs text-white/40">
+                    {p.id}
+                    {p.version ? ` · v${p.version}` : ''}
+                  </span>
+                  {!p.loaded && <span className="ml-2 text-xs text-amber-300">not loaded yet — rebuild & restart</span>}
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${p.source === 'custom' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'bg-white/5 text-white/40'}`}>
+                  {p.source}
+                </span>
+                {p.source === 'custom' && (
+                  <button className="btn btn-ghost p-1.5 hover:bg-red-500/20 hover:text-red-200" title="Remove" disabled={working} onClick={() => remove(p)}>
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </li>
+            ))}
+            {installed.length === 0 && <li className="px-4 py-3 text-sm text-white/40">Loading…</li>}
+          </ul>
+          {custom.length === 0 && installed.length > 0 && <p className="mt-2 text-xs text-white/40">No custom plugins installed yet.</p>}
         </section>
       </div>
     </Modal>

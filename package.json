@@ -11,9 +11,11 @@
     "build": "vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "new-plugin": "tsx scripts/new-plugin.ts"
+    "new-plugin": "tsx scripts/new-plugin.ts",
+    "pack-plugin": "tsx scripts/pack-plugin.ts"
   },
   "dependencies": {
+    "adm-zip": "^0.6.1",
     "express": "^4.21.2",
     "lucide-react": "^0.475.0",
     "node-ical": "^0.27.2",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
+    "@types/adm-zip": "^0.5.8",
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.18",
