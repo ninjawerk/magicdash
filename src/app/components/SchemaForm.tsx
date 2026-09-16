@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, X } from 'lucide-react';
 import type { ConfigField, SelectOption } from '@sdk';
 import { SECRET_MASK } from '@sdk';
 import { loadOptions, type CustomFieldProps, type PluginApi } from '@sdk/client';
@@ -254,16 +254,42 @@ function SelectField({
     );
   }
 
-  const selected = new Set(Array.isArray(value) ? (value as string[]) : []);
+  const selectedList = Array.isArray(value) ? (value as string[]) : [];
+  const selected = new Set(selectedList);
   const toggle = (v: string) => {
     const next = new Set(selected);
     next.has(v) ? next.delete(v) : next.add(v);
     set([...next]);
   };
+  const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? v;
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.03]">
+      {selectedList.length > 0 && (
+        <div className="border-b border-white/10 p-2">
+          <div className="flex items-center justify-between px-1 pb-1.5">
+            <span className="text-[10px] uppercase tracking-wider text-white/40">Selected · {selectedList.length}</span>
+            <button type="button" className="text-[10px] uppercase tracking-wider text-white/40 hover:text-white/80" onClick={() => set([])}>
+              Clear all
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {selectedList.map((v) => (
+              <span
+                key={v}
+                title={v}
+                className="inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--accent)]/40 bg-[var(--accent)]/15 pl-2.5 pr-1 py-0.5 text-xs"
+              >
+                <span className="truncate">{labelOf(v)}</span>
+                <button type="button" className="rounded-full p-0.5 hover:bg-white/15" onClick={() => toggle(v)} aria-label={`Remove ${labelOf(v)}`}>
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       {options.length > 8 && (
-        <input className="input rounded-b-none border-0 border-b border-white/10" placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input className="input rounded-none border-0 border-b border-white/10" placeholder="Filter…" value={filter} onChange={(e) => setFilter(e.target.value)} />
       )}
       <div className="max-h-64 overflow-y-auto p-1">
         {grouped.length === 0 && <p className="p-3 text-sm text-white/40">No options.</p>}
@@ -282,7 +308,6 @@ function SelectField({
           </div>
         ))}
       </div>
-      {selected.size > 0 && <div className="px-3 py-1.5 text-xs text-white/40 border-t border-white/10">{selected.size} selected</div>}
     </div>
   );
 }
