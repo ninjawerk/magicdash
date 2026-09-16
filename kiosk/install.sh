@@ -49,6 +49,15 @@ else
   echo "  raspi-config not found — set auto-login and screen blanking manually."
 fi
 
+step "Display control (backlight permissions, wlr-randr)"
+sudo apt-get install -y -qq wlr-randr >/dev/null 2>&1 || true
+sudo usermod -aG video "$USER_NAME" || true
+# Let the video group set the backlight (DSI Touch Display etc.) so the server can dim it without root.
+echo 'SUBSYSTEM=="backlight", ACTION=="add", RUN+="/bin/chgrp video /sys/class/backlight/%k/brightness", RUN+="/bin/chmod g+w /sys/class/backlight/%k/brightness"' \
+  | sudo tee /etc/udev/rules.d/90-magicdash-backlight.rules >/dev/null
+sudo udevadm control --reload-rules 2>/dev/null || true
+for b in /sys/class/backlight/*/brightness; do [ -e "$b" ] && sudo chgrp video "$b" && sudo chmod g+w "$b"; done 2>/dev/null || true
+
 step "Kiosk autostart (Chromium full-screen at login)"
 chmod +x kiosk/start-kiosk.sh
 LINE="$DIR/kiosk/start-kiosk.sh"

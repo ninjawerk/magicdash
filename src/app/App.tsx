@@ -1,10 +1,9 @@
-import { useEffect } from 'react';
 import { StoreProvider, useStore } from './lib/store';
 import { Dashboard } from './components/Dashboard';
 import { Dialogs } from './components/Dialogs';
 import { Toolbar } from './components/Toolbar';
 import { AdminApp } from './admin/AdminApp';
-import { applyTheme, normalizeTheme } from './lib/themes';
+import { DisplayLayer, Toasts } from './components/Overlays';
 
 function Shell() {
   const { layout, error, editMode } = useStore();
@@ -12,10 +11,6 @@ function Shell() {
   const multi = (layout?.screens.length ?? 0) > 1;
   const topInset = multi ? (editMode ? 60 : 26) : 0;
 
-  useEffect(() => {
-    if (!layout) return;
-    applyTheme(normalizeTheme(layout.theme));
-  }, [layout?.theme]);
 
   if (error) {
     return (
@@ -39,6 +34,8 @@ function Shell() {
       </div>
       <Toolbar />
       <Dialogs />
+      <Toasts />
+      <DisplayLayer />
     </div>
   );
 }

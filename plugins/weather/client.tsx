@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Droplets, Loader2, MapPin, Search, Sun, Sunrise, Sunset, Thermometer, Wind } from 'lucide-react';
-import { definePlugin, usePluginQuery, type CustomFieldProps, type WidgetProps } from '../../src/sdk/client';
+import { definePlugin, publish, usePluginQuery, type CustomFieldProps, type WeatherCurrentTopic, type WidgetProps } from '../../src/sdk/client';
 import manifest from './manifest';
 import { describeCode, type Forecast, type Location } from './shared';
 import { WeatherIcon } from './WeatherIcon';
@@ -139,6 +139,23 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
   });
 
   const cur0 = fc.data?.current;
+  // Tell other tiles (e.g. the greeting) what the weather is doing.
+  useEffect(() => {
+    const d = fc.data;
+    if (!d) return;
+    const topic: WeatherCurrentTopic = {
+      temp: d.current.temp,
+      units,
+      code: d.current.code,
+      isDay: d.current.isDay,
+      description: describeCode(d.current.code),
+      rainSoon: Math.max(0, ...d.hourly.slice(0, 12).map((h) => h.precipProb)),
+      tMax: d.daily[0]?.tMax,
+      tMin: d.daily[0]?.tMin,
+      location: loc?.name,
+    };
+    publish('weather:current', topic);
+  }, [fc.data, units, loc?.name]);
   const bgMode = config.background ?? 'auto';
   const customBg = config.customBackground?.trim();
   useEffect(() => {

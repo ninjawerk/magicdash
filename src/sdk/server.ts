@@ -54,6 +54,8 @@ export interface PluginServerContext<S = Record<string, unknown>> {
    */
   requestAttention: (reason?: string) => void;
   releaseAttention: () => void;
+  /** Show a toast on every connected dashboard. */
+  notify: (toast: { message: string; title?: string; level?: 'info' | 'success' | 'warn' | 'error'; durationSec?: number; icon?: string; screen?: string; switchScreen?: boolean }) => void;
 }
 
 export type ServerPluginSetup<S = Record<string, unknown>> = (

@@ -40,6 +40,17 @@ export const hostApi = {
     ),
   runUpdate: () => post<{ ok: true; started: boolean }>('/api/update/run'),
   restart: () => post<{ ok: true; prod: boolean }>('/api/system/restart'),
+  display: () =>
+    fetch('/api/display').then(
+      json<{
+        state: { on: boolean; brightness: number; hardware: { backlight: boolean; power: boolean }; reason?: string };
+        settings: { schedule: { enabled: boolean; offAt: string; onAt: string; days?: number[] }; presenceEntities: string[]; wakeSeconds: number; stayOnWhilePresent: boolean; brightness: number };
+        manual: { on?: boolean; until: string | null } | null;
+      }>,
+    ),
+  setDisplay: (b: { on?: boolean; brightness?: number; forSeconds?: number; clear?: boolean }) => post<{ ok: true }>('/api/display', b),
+  saveDisplaySettings: (s: unknown) => fetch('/api/display/settings', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(s) }).then(json<{ ok: true }>),
+  notify: (t: { message: string; title?: string; level?: string; durationSec?: number; icon?: string }) => post<{ ok: true }>('/api/notify', t),
   systemInfo: () =>
     fetch('/api/system/info').then(
       json<{ version: string; node: string; platform: string; hostname: string; uptimeSec: number; systemUptimeSec: number; memory: { total: number; free: number; rss: number }; load: number[]; cpuTemp?: number; prod: boolean; cwd: string }>,
