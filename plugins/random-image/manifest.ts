@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Random image',
   description: 'A slideshow from a folder on the Pi, your own URLs, or free photo/art providers by subject (Wikimedia, NASA, Cleveland Museum of Art, Unsplash, Pexels…).',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '🖼️',
   defaultSize: { w: 4, h: 3 },

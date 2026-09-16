@@ -269,6 +269,27 @@ server.registerTool(
   },
   async ({ files, replace }) => text(await api('POST', '/api/plugins/install', { files, replace: !!replace })),
 );
+server.registerTool(
+  'search_catalog',
+  { description: 'Search the plugin catalog(s). Returns entries with version, author, tags, reviewed flag, whether installed / update available / incompatible.', inputSchema: { query: z.string().optional(), refresh: z.boolean().optional() } },
+  async ({ query, refresh }) => {
+    const c = await api<{ items: Array<Record<string, unknown> & { name: string; description: string; author: string; tags?: string[] }>; sources: unknown[] }>('GET', `/api/catalog${refresh ? '?refresh=1' : ''}`);
+    const q = query?.toLowerCase();
+    const items = q ? c.items.filter((i) => [i.name, i.description, i.author, ...(i.tags ?? [])].some((v) => String(v).toLowerCase().includes(q))) : c.items;
+    return text({ sources: c.sources, items });
+  },
+);
+server.registerTool(
+  'install_from_catalog',
+  {
+    description: 'Install (or update) a catalog plugin by id: downloads the pinned release zip, verifies its SHA-256 and compatibility, installs it. Then call rebuild_and_restart. Tell the user if the entry is unreviewed — it runs code on their device.',
+    inputSchema: { id: z.string() },
+  },
+  async ({ id }) => text(await api('POST', '/api/catalog/install', { id, replace: true })),
+);
+server.registerTool('set_catalog_sources', { description: 'Replace the list of catalog index URLs (raw GitHub file, gist, your own server).', inputSchema: { sources: z.array(z.string().url()) } }, async ({ sources }) =>
+  text(await api('PUT', '/api/catalog/sources', { sources })),
+);
 server.registerTool('rebuild_and_restart', { description: 'Rebuild the frontend and (in production) restart the server so new plugins load. Takes ~1 min on a Pi.', inputSchema: {} }, async () => text(await api('POST', '/api/plugins/rebuild')));
 
 // --- Local repo helpers (when the MCP runs from a checkout) ---------------------------------------------------

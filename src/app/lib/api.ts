@@ -40,6 +40,23 @@ export const hostApi = {
     ),
   removePlugin: (id: string) => fetch(`/api/plugins/${id}`, { method: 'DELETE' }).then(json<{ ok: true; prod: boolean }>),
   rebuild: () => fetch('/api/plugins/rebuild', { method: 'POST' }).then(json<{ ok: true; restarting: boolean }>),
+  catalog: (refresh = false) =>
+    fetch(`/api/catalog${refresh ? '?refresh=1' : ''}`).then(
+      json<{
+        items: Array<{
+          id: string; name: string; description: string; author: string; repo: string; version: string; download: string; sha256: string; sdkVersion: number; minHost?: string;
+          tags?: string[]; screenshot?: string; reviewed?: boolean; source: string; installedVersion?: string; updateAvailable?: boolean; incompatible?: string; bundled?: boolean;
+        }>;
+        sources: Array<{ url: string; count: number; error?: string }>;
+      }>,
+    ),
+  catalogSources: () => fetch('/api/catalog/sources').then(json<{ sources: string[]; defaults: string[] }>),
+  setCatalogSources: (sources: string[]) =>
+    fetch('/api/catalog/sources', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sources }) }).then(json<{ sources: string[] }>),
+  installFromCatalog: (id: string, replace = false) =>
+    fetch('/api/catalog/install', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, replace }) }).then(
+      json<{ ok: true; id: string; name?: string; version?: string; files: number; replaced: boolean; reviewed: boolean; prod: boolean }>,
+    ),
   exportUrl: (secrets: boolean) => `/api/export?secrets=${secrets ? 1 : 0}`,
   importBackup: (backup: unknown, opts: { layout: boolean; settings: boolean }) =>
     fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ backup, ...opts }) }).then(

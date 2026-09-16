@@ -8,6 +8,9 @@ import { allPlugins, getPlugin, getPluginSettings, loadPlugins, setPluginSetting
 import { DATA_DIR, layoutStore, settingsStore } from './storage';
 import { createBackup, restoreBackup, validateBackup } from './backup';
 import { registerInstallRoutes } from './install';
+import { registerCatalogRoutes } from './catalog';
+import { HOST_VERSION } from './version';
+import { SDK_VERSION } from '../src/sdk/types';
 
 const PORT = Number(process.env.MAGICDASH_PORT ?? 3210);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -49,6 +52,8 @@ async function main() {
     res.setHeader('Access-Control-Allow-Origin', '*'); // the kiosk waiting page polls this from file://
     res.json({
       ok: true,
+      version: HOST_VERSION,
+      sdkVersion: SDK_VERSION,
       clients: clientCount(),
       plugins: allPlugins().map((p) => p.manifest.id),
       publicUrl,
@@ -176,6 +181,7 @@ async function main() {
 
   // --- Plugin install / remove / rebuild ---------------------------------------------
   registerInstallRoutes(app);
+  registerCatalogRoutes(app);
 
   // --- Plugin routers -----------------------------------------------------------
   for (const p of allPlugins()) {

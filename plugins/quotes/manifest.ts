@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Motivational quotes',
   description: 'Rotating quotes — bundled offline set, your own list, or live from the web.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '💬',
   defaultSize: { w: 4, h: 2 },

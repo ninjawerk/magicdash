@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Home Assistant',
   description: 'Live entity states with tap-to-toggle controls. Pick any entities per tile.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '🏠',
   defaultSize: { w: 4, h: 3 },

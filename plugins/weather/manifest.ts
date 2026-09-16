@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Weather',
   description: 'Current conditions, the next hours and a 7-day forecast. Powered by Open-Meteo — no API key needed.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '⛅',
   defaultSize: { w: 4, h: 3 },

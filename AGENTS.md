@@ -60,6 +60,14 @@ ctx: { manifest, router, settings{get,set,onChange}, cache{wrap,get,set,delete},
 ```
 Cache upstream calls (`ctx.cache.wrap(key, ttlMs, fn)`); thrown errors become `{ error }` 500s the widget shows.
 
+## Catalog
+
+`server/catalog.ts` downloads one or more JSON indexes (`$host.catalogSources` in data/settings.json, default the
+`magicdash-plugins` repo), merges them (first source wins per id), annotates with installed version / update /
+compatibility, and installs by downloading the pinned zip, verifying SHA-256 and manifest id, then reusing
+`installPluginFiles`. Manifests carry `sdkVersion` (SDK major, `SDK_VERSION` in types.ts) and `minHost`;
+`compatibilityIssue()` is the single place that decides. Bundled ids (`BUNDLED_PLUGINS`) are reserved.
+
 ## Conventions
 
 - Plugin ids are kebab-case and equal the folder name. Bundled ids are listed in `server/install.ts` (`BUNDLED_PLUGINS`) — add new bundled ones there.

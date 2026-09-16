@@ -56,9 +56,19 @@ export type ConfigField =
   | (BaseField & { type: 'custom'; default?: unknown })
   | (BaseField & { type: 'action'; /** Button that calls POST <router>/<action> */ action: string; buttonLabel: string; variant?: 'primary' | 'danger' | 'default' });
 
+/**
+ * SDK major version. Bump when WidgetProps / PluginServerContext change incompatibly.
+ * Plugins declare the version they were written against; the host refuses a higher major.
+ */
+export const SDK_VERSION = 1;
+
 export interface PluginManifest {
   /** Unique, url-safe id. Folder name under /plugins should match. */
   id: string;
+  /** SDK major this plugin was written against (see SDK_VERSION). Required for catalog plugins. */
+  sdkVersion?: number;
+  /** Minimum MagicDash host version (semver), e.g. "0.1.0". */
+  minHost?: string;
   name: string;
   description: string;
   version: string;
@@ -196,6 +206,23 @@ export function normalizeLayout(raw: DashboardLayout): DashboardLayout {
 /** Every tile across all screens. */
 export function allWidgets(l: DashboardLayout): WidgetInstance[] {
   return l.screens.flatMap((s) => s.widgets);
+}
+
+/** Compare two semver strings (major.minor.patch, extra ignored). Returns -1, 0, 1. */
+export function compareSemver(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = b.replace(/^v/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) < (pb[i] ?? 0) ? -1 : 1;
+  }
+  return 0;
+}
+
+/** Why a plugin can't run on this host, or undefined when it's fine. */
+export function compatibilityIssue(m: { sdkVersion?: number; minHost?: string }, hostVersion: string): string | undefined {
+  if (m.sdkVersion !== undefined && m.sdkVersion > SDK_VERSION) return `needs SDK v${m.sdkVersion}, this host provides v${SDK_VERSION}`;
+  if (m.minHost && compareSemver(hostVersion, m.minHost) < 0) return `needs MagicDash ${m.minHost} or newer (you have ${hostVersion})`;
+  return undefined;
 }
 
 /** Utility: build a config object from field defaults. */
