@@ -207,6 +207,13 @@ export function usePluginQuery<T>(
 
 /** Options loader for select fields (used by the host and available to plugins). */
 export async function loadOptions(api: PluginApi, path: string): Promise<SelectOption[]> {
+  // "/api/plugins/other/route" lets a plugin reuse another plugin's picker (e.g. Home Assistant entities).
+  if (path.startsWith('/api/')) {
+    const r = await fetch(path);
+    const data = (await r.json()) as SelectOption[] | { error?: string };
+    if (!r.ok) throw new Error((data as { error?: string }).error ?? r.statusText);
+    return Array.isArray(data) ? data : [];
+  }
   const res = await api.get<SelectOption[]>(path);
   return Array.isArray(res) ? res : [];
 }

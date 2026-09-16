@@ -49,7 +49,7 @@ export type ConfigField =
       default?: string;
       /** Static options... */
       options?: SelectOption[];
-      /** ...or a path on this plugin's server router (e.g. "calendars") that returns SelectOption[]. */
+      /** ...or a path on this plugin's server router (e.g. "calendars") that returns SelectOption[]; an absolute "/api/plugins/<other>/route" reuses another plugin's picker. */
       optionsFrom?: string;
     })
   | (BaseField & {

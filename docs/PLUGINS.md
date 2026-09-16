@@ -72,7 +72,8 @@ The host renders a form from these. No settings UI code needed.
 { type: 'action', action: 'path', buttonLabel, variant? }  // POST to your router
 ```
 
-`optionsFrom: 'entities'` makes the host `GET /api/plugins/<id>/entities` and expects
+`optionsFrom: 'entities'` makes the host `GET /api/plugins/<id>/entities` (or an absolute `/api/plugins/<other>/route` to
+reuse another plugin's picker — the Home Assistant cards plugin uses the bundled HA plugin's entity list this way) and expects
 `[{ label, value, description?, group? }]`. This is how the Home Assistant entity picker and the
 calendar picker work — the server knows the options, the manifest just points at the route.
 
@@ -240,6 +241,13 @@ export default defineServerPlugin<Settings>((ctx) => {
 
 Errors thrown inside `asyncHandler` become `{ error: message }` with status 500; the widget gets it
 in `error` from `usePluginQuery`.
+
+### Building on a bundled plugin
+
+Plugin routes are reachable from any widget with plain `fetch('/api/plugins/<id>/…')`, and their live pushes with
+`usePluginEvent('<id>', event, handler)`. The bundled Home Assistant plugin exposes `/states`, `/entities`, `/service`,
+`/camera/:entity`, `/image?path=`, `/history?entity_id=`; the calendar plugin exposes `/events?days=&calendars=` and
+`/calendars`. Compose rather than duplicate credentials — see the `calendar-grid` and `ha-cards` community plugins.
 
 ### Patterns worth copying
 

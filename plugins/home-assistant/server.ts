@@ -154,6 +154,54 @@ export default defineServerPlugin<Settings>((ctx) => {
     res.json(opts);
   });
 
+  const haFetch = (path: string, init: RequestInit = {}) =>
+    fetch(`${baseUrl()}${path}`, { ...init, headers: { authorization: `Bearer ${ctx.settings.get().token}`, ...(init.headers ?? {}) } });
+
+  /** GET /camera/:entity — current camera frame (proxied so the browser never needs the HA token). */
+  ctx.router.get(
+    '/camera/:entity',
+    asyncHandler(async (req, res) => {
+      const r = await haFetch(`/api/camera_proxy/${encodeURIComponent(req.params.entity)}`);
+      if (!r.ok) throw new Error(`Home Assistant ${r.status}`);
+      res.setHeader('Content-Type', r.headers.get('content-type') ?? 'image/jpeg');
+      res.setHeader('Cache-Control', 'no-store');
+      res.send(Buffer.from(await r.arrayBuffer()));
+    }),
+  );
+
+  /** GET /image?path=/api/media_player_proxy/... — proxies entity_picture / album art paths. */
+  ctx.router.get(
+    '/image',
+    asyncHandler(async (req, res) => {
+      const p = String(req.query.path ?? '');
+      if (!p.startsWith('/')) throw new Error('path must be a Home Assistant-relative path');
+      const r = await haFetch(p);
+      if (!r.ok) throw new Error(`Home Assistant ${r.status}`);
+      res.setHeader('Content-Type', r.headers.get('content-type') ?? 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=60');
+      res.send(Buffer.from(await r.arrayBuffer()));
+    }),
+  );
+
+  /** GET /history?entity_id=sensor.x&hours=24 → [{ t, v }] numeric samples (for sparklines). */
+  ctx.router.get(
+    '/history',
+    asyncHandler(async (req, res) => {
+      const entity = String(req.query.entity_id ?? '');
+      const hours = Math.max(1, Math.min(168, Number(req.query.hours ?? 24)));
+      if (!entity) throw new Error('entity_id required');
+      const key = `hist:${entity}:${hours}`;
+      const data = await ctx.cache.wrap(key, 5 * 60_000, async () => {
+        const start = new Date(Date.now() - hours * 3600_000).toISOString();
+        const r = await haFetch(`/api/history/period/${start}?filter_entity_id=${encodeURIComponent(entity)}&minimal_response&no_attributes`);
+        if (!r.ok) throw new Error(`Home Assistant ${r.status}`);
+        const arr = (await r.json()) as Array<Array<{ state: string; last_changed: string }>>;
+        return (arr[0] ?? []).map((x) => ({ t: x.last_changed, v: Number(x.state) })).filter((x) => Number.isFinite(x.v));
+      });
+      res.json(data);
+    }),
+  );
+
   /** POST /service { domain, service, entity_id?, data? } */
   ctx.router.post(
     '/service',
