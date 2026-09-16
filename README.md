@@ -50,24 +50,47 @@ bash kiosk/install.sh
 sudo reboot
 ```
 
-The script installs Node 22 and Chromium, builds the frontend, registers `magicdash.service`
-(serves on port 3210, restarts on failure), disables screen blanking and adds a kiosk autostart
-entry for labwc, Wayfire or LXDE — whichever your Pi uses.
+The script:
+
+1. installs Node 22, Chromium and helpers;
+2. builds the frontend and registers **`magicdash.service`** — the server starts on boot, before login,
+   and restarts itself if it crashes;
+3. turns on **desktop auto-login** and **SSH**, and turns off **screen blanking**;
+4. adds a **kiosk autostart** entry (labwc, Wayfire, LXDE and a generic `.desktop` fallback) that runs
+   `kiosk/start-kiosk.sh` at login: it waits for the server, then opens Chromium with `--kiosk --start-fullscreen`
+   and relaunches it if it ever closes.
+
+After `sudo reboot` the Pi comes up straight into the full-screen dashboard. The mouse cursor hides after a
+few seconds of inactivity.
 
 Useful afterwards:
 
 ```bash
-journalctl -u magicdash -f        # server logs
-sudo systemctl restart magicdash  # after git pull && npm run build
+journalctl -u magicdash -f              # server logs
+tail -f ~/.local/state/magicdash-kiosk.log   # kiosk/Chromium log
+sudo systemctl restart magicdash        # after git pull && npm ci && npm run build
 ```
 
-Open `http://<pi-ip>:3210` from any device on your network to edit the layout.
+### Editing from your laptop or phone
 
-### Keeping the display on
+The layout lives on the Pi's server, so any browser on the same network can edit it and the kiosk
+updates live. Open one of:
 
-`install.sh` runs `raspi-config nonint do_blanking 1`. If the screen still sleeps, open
-*Raspberry Pi Configuration → Display → Screen Blanking → Off*. On X11 sessions `kiosk/start-kiosk.sh`
-also runs `xset s off -dpms`.
+- `http://<hostname>.local:3210` — e.g. `http://raspberrypi.local:3210` (mDNS; works on macOS, iOS, Windows 10+, most Linux)
+- `http://<pi-ip>:3210`
+
+Press **E** or tap the pencil to enter edit mode. On the kiosk itself, *Edit → Remote* lists these addresses.
+
+Away from home, put the Pi and your laptop on the same [Tailscale](https://tailscale.com) network
+(`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up` on the Pi) and use the Pi's Tailscale
+address. The dashboard has no login of its own, so don't forward port 3210 on your router.
+
+### If the screen still sleeps or the kiosk doesn't appear
+
+- Screen: *Raspberry Pi Configuration → Display → Screen Blanking → Off*. On X11 sessions the kiosk script also runs `xset s off -dpms`.
+- Kiosk didn't start: make sure the Pi boots to the desktop with auto-login (*Raspberry Pi Configuration → System → Auto Login*),
+  then check `~/.local/state/magicdash-kiosk.log`.
+- Server didn't start: `systemctl status magicdash`.
 
 ## Themes & grid
 

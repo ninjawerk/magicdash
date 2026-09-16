@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Check, DatabaseBackup, LayoutGrid, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
+import { Check, DatabaseBackup, LayoutGrid, MonitorSmartphone, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
+import { hostApi } from '../lib/api';
 import { listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
 
@@ -12,6 +13,13 @@ export function Toolbar() {
   const { editMode, setEditMode, setDialog, dialog } = useStore();
   const [visible, setVisible] = useState(true);
   const [pluginsOpen, setPluginsOpen] = useState(false);
+  const [remoteOpen, setRemoteOpen] = useState(false);
+  const [addresses, setAddresses] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!editMode) return;
+    hostApi.health().then((h) => setAddresses(h.addresses ?? [])).catch(() => undefined);
+  }, [editMode]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -83,6 +91,25 @@ export function Toolbar() {
                     <span>{p.manifest.icon}</span> {p.manifest.name}
                   </button>
                 ))}
+              </div>
+            )}
+          </div>
+          <div className="relative">
+            <button className="btn btn-ghost" onClick={() => setRemoteOpen((o) => !o)} title="Edit from another device">
+              <MonitorSmartphone size={16} /> Remote
+            </button>
+            {remoteOpen && (
+              <div className="surface absolute bottom-full right-0 mb-2 w-80 rounded-xl border border-white/10 p-4 shadow-2xl text-sm" onMouseLeave={() => setRemoteOpen(false)}>
+                <p className="font-semibold">Edit from your laptop or phone</p>
+                <p className="mt-1 text-xs text-white/50">Open one of these on any device on the same network. Changes show up here instantly.</p>
+                <ul className="mt-2 space-y-1">
+                  {addresses.length === 0 && <li className="text-xs text-white/40">Looking up addresses…</li>}
+                  {addresses.map((a) => (
+                    <li key={a} className="font-mono text-xs text-white/90 select-all break-all">
+                      {a}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

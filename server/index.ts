@@ -18,6 +18,18 @@ function detectPublicUrl(): string {
   return IS_PROD ? `http://${os.hostname()}:${PORT}` : `http://localhost:5173`;
 }
 
+/** URLs other devices on the LAN can use to open the dashboard. */
+function lanAddresses(): string[] {
+  const port = IS_PROD ? PORT : 5173;
+  const out = [`http://${os.hostname().toLowerCase().replace(/\.local$/, '')}.local:${port}`];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const ni of list ?? []) {
+      if (ni.family === 'IPv4' && !ni.internal) out.push(`http://${ni.address}:${port}`);
+    }
+  }
+  return out;
+}
+
 function secretKeys(fields: ConfigField[] | undefined): Set<string> {
   return new Set((fields ?? []).filter((f) => f.type === 'string' && f.secret).map((f) => f.key));
 }
@@ -33,7 +45,14 @@ async function main() {
 
   // --- Core API ---------------------------------------------------------------
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, clients: clientCount(), plugins: allPlugins().map((p) => p.manifest.id), publicUrl, dataDir: DATA_DIR });
+    res.json({
+      ok: true,
+      clients: clientCount(),
+      plugins: allPlugins().map((p) => p.manifest.id),
+      publicUrl,
+      dataDir: DATA_DIR,
+      addresses: lanAddresses(),
+    });
   });
 
   app.get('/api/plugins', (_req, res) => {
