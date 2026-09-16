@@ -11,6 +11,8 @@ interface Config {
   showHourly?: boolean;
   days?: number;
   showDetails?: boolean;
+  background?: 'auto' | 'subtle' | 'none' | 'custom';
+  customBackground?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -155,17 +157,27 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
   });
 
   const cur0 = fc.data?.current;
+  const bgMode = config.background ?? 'auto';
+  const customBg = config.customBackground?.trim();
   useEffect(() => {
+    if (bgMode === 'none') {
+      setBackground(undefined);
+      return;
+    }
+    if (bgMode === 'custom') {
+      setBackground(customBg || undefined);
+      return () => setBackground(undefined);
+    }
     if (!cur0) {
       setBackground(undefined);
       return;
     }
     const glowSize = Math.max(160, size.width * 0.5);
-    setBackground(
-      `radial-gradient(${glowSize}px ${glowSize}px at 12% 8%, ${glowColor(cur0.code, cur0.isDay)} 0%, transparent 70%), ${conditionGradient(cur0.code, cur0.isDay)}`,
-    );
+    const css = `radial-gradient(${glowSize}px ${glowSize}px at 12% 8%, ${glowColor(cur0.code, cur0.isDay)} 0%, transparent 70%), ${conditionGradient(cur0.code, cur0.isDay)}`;
+    // "subtle" fades the wash by layering the tile colour on top.
+    setBackground(bgMode === 'subtle' ? `linear-gradient(color-mix(in srgb, var(--surface) 55%, transparent), color-mix(in srgb, var(--surface) 55%, transparent)), ${css}` : css);
     return () => setBackground(undefined);
-  }, [cur0?.code, cur0?.isDay, size.width, setBackground]);
+  }, [bgMode, customBg, cur0?.code, cur0?.isDay, size.width, setBackground]);
 
   if (!loc) {
     return (

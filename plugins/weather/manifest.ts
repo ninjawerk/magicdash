@@ -24,6 +24,27 @@ const manifest: PluginManifest = {
     { key: 'showHourly', label: 'Show next hours', type: 'boolean', default: true },
     { key: 'days', label: 'Forecast days', type: 'number', min: 0, max: 14, default: 7 },
     { key: 'showDetails', label: 'Show humidity, wind, sunrise…', type: 'boolean', default: true },
+    {
+      key: 'background',
+      label: 'Tile background',
+      type: 'select',
+      default: 'auto',
+      options: [
+        { label: 'Match the weather (colour by conditions)', value: 'auto' },
+        { label: 'Match the weather, subtle', value: 'subtle' },
+        { label: 'None (plain tile)', value: 'none' },
+        { label: 'Custom…', value: 'custom' },
+      ],
+    },
+    {
+      key: 'customBackground',
+      label: 'Custom background',
+      type: 'textarea',
+      rows: 2,
+      placeholder: 'linear-gradient(135deg, rgba(56,140,255,0.35), rgba(255,140,90,0.25))',
+      showWhen: { key: 'background', equals: 'custom' },
+      help: 'Any CSS background. Translucent colours work on every theme.',
+    },
   ],
 };
 export default manifest;
