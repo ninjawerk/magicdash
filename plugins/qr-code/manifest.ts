@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'QR code',
   description: 'Wi-Fi login for guests, a link, or any text as a scannable QR code.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '🔳',
   defaultSize: { w: 2, h: 2 },

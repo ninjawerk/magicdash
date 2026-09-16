@@ -16,6 +16,8 @@ import type { Express } from 'express';
 import express from 'express';
 import { broadcast } from './events';
 import { PLUGINS_DIR, allPlugins } from './plugins';
+import { HOST_VERSION } from './version';
+import { compatibilityIssue } from '../src/sdk/types';
 
 export const BUNDLED_PLUGINS = new Set(['clock', 'google-calendar', 'home-assistant', 'quotes', 'random-image', 'weather', 'news', 'word-of-the-day', 'qr-code']);
 const RESERVED_IDS = new Set(['install', 'installed', 'rebuild', 'upload', '_template']);
@@ -43,6 +45,16 @@ function normalizeFiles(files: IncomingFile[]): IncomingFile[] {
   if (!manifest) throw new Error('No manifest.ts found in the upload.');
   const prefix = manifest.path.slice(0, -'manifest.ts'.length);
   return cleaned.filter((f) => f.path.startsWith(prefix)).map((f) => ({ ...f, path: f.path.slice(prefix.length) }));
+}
+
+/** Pull simple scalar fields out of a manifest.ts without executing it. */
+export function readManifestFields(source: string): { id?: string; name?: string; version?: string; sdkVersion?: number; minHost?: string } {
+  const str = (k: string) => source.match(new RegExp(`\\b${k}\\s*:\\s*['"\`]([^'"\`]+)['"\`]`))?.[1];
+  const num = (k: string) => {
+    const m = source.match(new RegExp(`\\b${k}\\s*:\\s*(\\d+)`));
+    return m ? Number(m[1]) : undefined;
+  };
+  return { id: str('id'), name: str('name'), version: str('version'), sdkVersion: num('sdkVersion'), minHost: str('minHost') };
 }
 
 function idFromManifest(source: string): string {
@@ -76,8 +88,11 @@ export async function installPluginFiles(rawFiles: IncomingFile[], replace: bool
   const manifestSrc = files.find((f) => f.path === 'manifest.ts')!;
   const manifestText = manifestSrc.encoding === 'base64' ? Buffer.from(manifestSrc.content, 'base64').toString('utf8') : manifestSrc.content;
   const id = idFromManifest(manifestText);
-  const name = manifestText.match(/\bname\s*:\s*['"`]([^'"`]+)['"`]/)?.[1];
+  const fields = readManifestFields(manifestText);
+  const name = fields.name;
   if (BUNDLED_PLUGINS.has(id)) throw new Error(`"${id}" is a bundled plugin and can't be replaced by upload. Choose a different id.`);
+  const issue = compatibilityIssue(fields, HOST_VERSION);
+  if (issue) throw new Error(`Plugin "${id}" ${issue}.`);
 
   const dest = path.join(PLUGINS_DIR, id);
   let replaced = false;
@@ -151,16 +166,20 @@ export function registerInstallRoutes(app: Express) {
     const loaded = new Map(allPlugins().map((p) => [p.manifest.id, p]));
     const dirs = (await fs.readdir(PLUGINS_DIR, { withFileTypes: true })).filter((d) => d.isDirectory() && !d.name.startsWith('_') && !d.name.startsWith('.'));
     res.json(
-      dirs.map((d) => {
-        const p = loaded.get(d.name);
-        return {
-          id: d.name,
-          name: p?.manifest.name ?? d.name,
-          version: p?.manifest.version,
-          source: BUNDLED_PLUGINS.has(d.name) ? 'bundled' : 'custom',
-          loaded: !!p,
-        };
-      }),
+      await Promise.all(
+        dirs.map(async (d) => {
+          const p = loaded.get(d.name);
+          const fields = p ? p.manifest : readManifestFields(await fs.readFile(path.join(PLUGINS_DIR, d.name, 'manifest.ts'), 'utf8').catch(() => ''));
+          return {
+            id: d.name,
+            name: fields.name ?? d.name,
+            version: fields.version,
+            source: BUNDLED_PLUGINS.has(d.name) ? 'bundled' : 'custom',
+            loaded: !!p,
+            incompatible: compatibilityIssue(fields, HOST_VERSION),
+          };
+        }),
+      ),
     );
   });
 

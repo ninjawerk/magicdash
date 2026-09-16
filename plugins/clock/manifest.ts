@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Clock',
   description: 'Big, legible time and date.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '🕰️',
   defaultSize: { w: 4, h: 2 },

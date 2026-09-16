@@ -217,7 +217,18 @@ in `error` from `usePluginQuery`.
 - **Async options for pickers:** a route returning `SelectOption[]` plus `optionsFrom` in the manifest.
 - **No server at all:** the clock plugin is client-only. Delete `server.ts` and the host still mounts a router that 404s.
 
-## 4. Sharing and installing plugins
+## 4. Compatibility fields
+
+Every manifest should declare what it was written against:
+
+```ts
+sdkVersion: 1,       // SDK major (src/sdk/types.ts SDK_VERSION). The host refuses a higher major.
+minHost: '0.1.0',    // minimum MagicDash version
+```
+
+The host skips plugins it can't run and says why in the log and the Plugins dialog; the catalog hides them.
+
+## 5. Sharing and installing plugins
 
 **Pack** a plugin into a zip:
 
@@ -241,9 +252,22 @@ Set `MAGICDASH_PLUGIN_UPLOAD=off` in the systemd unit to disable upload from the
 
 Plugin ids must be kebab-case, and the six bundled ids can't be replaced by upload.
 
-## 5. Checklist before sharing
+### Publishing to the catalog
 
-- [ ] `id` equals the folder name; `version` bumped
+The catalog is a JSON index at https://github.com/ninjawerk/magicdash-plugins that dashboards download and search
+locally (Edit → Add → Browse & install plugins…). To list your plugin:
+
+1. Put it in its own GitHub repo, tag a release, and attach the zip from `npm run pack-plugin <id>` as a release asset.
+2. Open a PR to `magicdash-plugins` adding an entry to `index.json` with the asset URL and its `sha256sum`.
+   CI checks the schema, downloads the zip, verifies the checksum and that the manifest id, version and sdkVersion match.
+3. Ids are first come, first served; bundled ids are reserved. Entries start **unreviewed**; a maintainer marks a version
+   **reviewed** after reading it. Say so honestly in your README — users see the badge.
+
+Users can also add other indexes (a gist, a company server) under *Browse → Sources*.
+
+## 6. Checklist before sharing
+
+- [ ] `id` equals the folder name; `version` bumped; `sdkVersion` and `minHost` set
 - [ ] Works at the `minSize` you declared and at 12×8
 - [ ] Shows a helpful empty state before it is configured (and `openSettings` on click in edit mode)
 - [ ] Network calls go through the server with `ctx.cache` so ten tiles don't make ten requests

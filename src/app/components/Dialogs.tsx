@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Download, FolderOpen, Loader2, PackagePlus, Plus, Settings2, Trash2, Upload } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, ExternalLink, FolderOpen, Loader2, PackagePlus, Plus, RefreshCw, Search, Settings2, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { subscribeEvents } from '@sdk/client';
 import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
 import { hostApi } from '../lib/api';
@@ -46,7 +46,7 @@ function AddWidgetDialog({ onClose }: { onClose: () => void }) {
       width={680}
       footer={
         <button className="btn btn-default mr-auto" onClick={() => setDialog({ kind: 'install' })}>
-          <PackagePlus size={14} /> Install a plugin…
+          <PackagePlus size={14} /> Browse & install plugins…
         </button>
       }
     >
@@ -464,7 +464,7 @@ function BackupDialog({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------------------
 
-type InstalledPlugin = { id: string; name: string; version?: string; source: 'bundled' | 'custom'; loaded: boolean };
+type InstalledPlugin = { id: string; name: string; version?: string; source: 'bundled' | 'custom'; loaded: boolean; incompatible?: string };
 
 async function readFolder(list: FileList): Promise<Array<{ path: string; content: string; encoding?: 'utf8' | 'base64' }>> {
   const files: Array<{ path: string; content: string; encoding?: 'utf8' | 'base64' }> = [];
@@ -484,7 +484,15 @@ async function readFolder(list: FileList): Promise<Array<{ path: string; content
   return files;
 }
 
+type CatalogItem = Awaited<ReturnType<typeof hostApi.catalog>>['items'][number];
+
 function InstallPluginDialog({ onClose }: { onClose: () => void }) {
+  const [tab, setTab] = useState<'browse' | 'upload' | 'installed'>('browse');
+  const [catalog, setCatalog] = useState<Awaited<ReturnType<typeof hostApi.catalog>>>();
+  const [catalogError, setCatalogError] = useState<string>();
+  const [query, setQuery] = useState('');
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const [sourcesDraft, setSourcesDraft] = useState<string[]>([]);
   const [installed, setInstalled] = useState<InstalledPlugin[]>([]);
   const [enabled, setEnabled] = useState<{ enabled: boolean; prod: boolean }>();
   const [replace, setReplace] = useState(false);
@@ -495,10 +503,40 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
   const [pendingRebuild, setPendingRebuild] = useState(false);
 
   const refresh = () => hostApi.installedPlugins().then(setInstalled).catch(() => undefined);
+  const loadCatalog = (force = false) => {
+    setCatalogError(undefined);
+    hostApi
+      .catalog(force)
+      .then((c) => {
+        setCatalog(c);
+        setSourcesDraft(c.sources.map((x) => x.url));
+      })
+      .catch((e) => setCatalogError((e as Error).message));
+  };
   useEffect(() => {
     refresh();
+    loadCatalog();
     hostApi.uploadEnabled().then(setEnabled).catch(() => setEnabled({ enabled: false, prod: false }));
   }, []);
+
+  const installFromCatalog = async (item: CatalogItem) => {
+    if (!item.reviewed && !confirm(`"${item.name}" has NOT been reviewed by the catalog maintainers.\n\nIt will run code on this machine with the dashboard's permissions. Only continue if you trust ${item.author} (${item.repo}).`)) return;
+    setError(undefined);
+    setStage('uploading');
+    setBusy('Downloading & verifying…');
+    try {
+      const r = await hostApi.installFromCatalog(item.id, item.installedVersion !== undefined);
+      setLog((l) => [...l, `Verified SHA-256 and installed ${r.name ?? r.id} v${r.version ?? ''}`]);
+      await refresh();
+      loadCatalog();
+      setPendingRebuild(true);
+      await runRebuild();
+    } catch (e) {
+      setStage('idle');
+      setBusy(undefined);
+      setError((e as Error).message);
+    }
+  };
   useEffect(
     () =>
       subscribeEvents((ev) => {
@@ -598,8 +636,171 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
   const custom = installed.filter((p) => p.source === 'custom');
   const working = !!busy;
 
+  const q = query.trim().toLowerCase();
+  const items = (catalog?.items ?? []).filter(
+    (it) => !q || it.name.toLowerCase().includes(q) || it.description.toLowerCase().includes(q) || it.author.toLowerCase().includes(q) || it.tags?.some((t) => t.toLowerCase().includes(q)),
+  );
+  const updates = (catalog?.items ?? []).filter((it) => it.updateAvailable).length;
+
   return (
-    <Modal title="Install a plugin" subtitle="Add a plugin folder or .zip. The app rebuilds and reloads itself." onClose={onClose} width={640}>
+    <Modal title="Plugins" subtitle="Browse the catalog, upload your own, or manage what's installed." onClose={onClose} width={720}>
+      <div className="mb-5 flex gap-1 rounded-xl bg-white/5 p-1">
+        {(
+          [
+            ['browse', 'Browse catalog'],
+            ['upload', 'Upload'],
+            ['installed', `Installed${updates ? ` · ${updates} update${updates === 1 ? '' : 's'}` : ''}`],
+          ] as const
+        ).map(([k, label]) => (
+          <button key={k} className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition ${tab === k ? 'bg-[var(--accent)] text-[#0b0f17]' : 'hover:bg-white/10'}`} onClick={() => setTab(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {(error || busy || log.length > 0 || stage === 'dev-done' || (pendingRebuild && !working)) && (
+        <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          {error && <p className="text-xs text-red-300 whitespace-pre-wrap">{error}</p>}
+          {busy && (
+            <p className="flex items-center gap-2 text-sm text-white/70">
+              <Loader2 className="animate-spin" size={14} /> {busy}
+            </p>
+          )}
+          {stage === 'dev-done' && (
+            <p className="mt-2 rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-3 text-xs text-emerald-100">
+              Built. You’re running the dev server, so restart <code className="font-mono">npm run dev</code> to load the plugin’s backend, then reload this page.
+            </p>
+          )}
+          {pendingRebuild && !working && stage !== 'dev-done' && (
+            <button className="btn btn-default mt-2" onClick={runRebuild}>
+              Rebuild & restart now
+            </button>
+          )}
+          {log.length > 0 && <pre className="mt-2 max-h-40 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/70 whitespace-pre-wrap">{log.join('\n')}</pre>}
+        </div>
+      )}
+
+      {tab === 'browse' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <input className="input pl-9" placeholder="Search plugins… (name, tag, author)" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </div>
+            <button className="btn btn-ghost p-2" title="Refresh catalog" onClick={() => loadCatalog(true)}>
+              <RefreshCw size={16} />
+            </button>
+            <button className="btn btn-ghost px-2 py-2 text-xs" onClick={() => setSourcesOpen((o) => !o)}>
+              Sources
+            </button>
+          </div>
+          {sourcesOpen && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+              <p className="text-xs text-white/50">
+                Each source is a JSON index the dashboard downloads and searches locally — a GitHub repo’s raw file, a gist, or your own URL. The first source
+                wins when two list the same plugin id.
+              </p>
+              {sourcesDraft.map((u, i) => (
+                <div key={i} className="flex gap-2">
+                  <input className="input font-mono text-xs" value={u} onChange={(e) => setSourcesDraft(sourcesDraft.map((x, j) => (j === i ? e.target.value : x)))} />
+                  <button className="btn btn-ghost px-2" onClick={() => setSourcesDraft(sourcesDraft.filter((_, j) => j !== i))}>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <button className="btn btn-default text-xs" onClick={() => setSourcesDraft([...sourcesDraft, ''])}>
+                  <Plus size={12} /> Add source
+                </button>
+                <button
+                  className="btn btn-primary text-xs"
+                  onClick={async () => {
+                    await hostApi.setCatalogSources(sourcesDraft.filter(Boolean));
+                    setSourcesOpen(false);
+                    loadCatalog(true);
+                  }}
+                >
+                  Save sources
+                </button>
+              </div>
+              {catalog?.sources.some((x) => x.error) && (
+                <ul className="text-xs text-amber-200">
+                  {catalog.sources.filter((x) => x.error).map((x) => (
+                    <li key={x.url}>Couldn’t load {x.url}: {x.error}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {catalogError && <p className="text-xs text-red-300">{catalogError}</p>}
+          {!catalog && !catalogError && (
+            <p className="flex items-center gap-2 text-sm text-white/50">
+              <Loader2 className="animate-spin" size={14} /> Loading catalog…
+            </p>
+          )}
+          {catalog && items.length === 0 && <p className="text-sm text-white/40">{q ? 'No plugins match.' : 'The catalog is empty or unreachable.'}</p>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {items.map((it) => (
+              <div key={it.id} className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                {it.screenshot && <img src={it.screenshot} alt="" className="h-28 w-full rounded-lg object-cover" loading="lazy" />}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{it.name}</div>
+                    <div className="text-xs text-white/45 truncate">
+                      by {it.author} · v{it.version}
+                      {it.installedVersion ? ` · installed v${it.installedVersion}` : ''}
+                    </div>
+                  </div>
+                  {it.reviewed ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300" title="A catalog maintainer has read this version's code.">
+                      <ShieldCheck size={11} /> reviewed
+                    </span>
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200" title="Listed but not read by the catalog maintainers. Runs code on your device.">
+                      <ShieldAlert size={11} /> unreviewed
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-white/65 line-clamp-3">{it.description}</p>
+                {it.tags && it.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {it.tags.map((t) => (
+                      <button key={t} className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50 hover:bg-white/10" onClick={() => setQuery(t)}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-auto flex items-center gap-2 pt-1">
+                  <a className="btn btn-ghost px-2 py-1 text-xs" href={`https://github.com/${it.repo}`} target="_blank" rel="noreferrer">
+                    <ExternalLink size={12} /> Source
+                  </a>
+                  <span className="ml-auto" />
+                  {it.bundled ? (
+                    <span className="text-xs text-white/40">bundled</span>
+                  ) : it.incompatible ? (
+                    <span className="text-xs text-amber-200" title={it.incompatible}>
+                      {it.incompatible}
+                    </span>
+                  ) : it.installedVersion && !it.updateAvailable ? (
+                    <span className="text-xs text-emerald-300">installed</span>
+                  ) : (
+                    <button className="btn btn-primary px-3 py-1 text-xs" disabled={working || enabled?.enabled === false} onClick={() => installFromCatalog(it)}>
+                      <Download size={12} /> {it.updateAvailable ? `Update to v${it.version}` : 'Install'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-white/35">
+            Installing runs the plugin’s code on this device. Every entry is pinned to a release file and its SHA-256, which is verified before install. “Reviewed”
+            means a catalog maintainer has read that version; “unreviewed” means it is listed on trust alone.
+          </p>
+        </div>
+      )}
+
+      {tab === 'upload' && (
       <div className="space-y-6">
         {enabled && !enabled.enabled && (
           <p className="rounded-lg bg-amber-500/10 border border-amber-400/30 p-3 text-sm text-amber-100">
@@ -634,27 +835,12 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
               <input type="checkbox" className="accent-[var(--accent)]" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace if already installed
             </label>
           </div>
-          {error && <p className="mt-3 text-xs text-red-300 whitespace-pre-wrap">{error}</p>}
-          {busy && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-white/70">
-              <Loader2 className="animate-spin" size={14} /> {busy}
-            </p>
-          )}
-          {stage === 'dev-done' && (
-            <p className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-400/30 p-3 text-xs text-emerald-100">
-              Built. You’re running the dev server, so restart <code className="font-mono">npm run dev</code> to load the plugin’s backend, then reload this page.
-            </p>
-          )}
-          {pendingRebuild && !working && stage !== 'dev-done' && (
-            <button className="btn btn-default mt-3" onClick={runRebuild}>
-              Rebuild & restart now
-            </button>
-          )}
-          {log.length > 0 && (
-            <pre className="mt-3 max-h-40 overflow-y-auto rounded-lg bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-white/70 whitespace-pre-wrap">{log.join('\n')}</pre>
-          )}
         </section>
+      </div>
+      )}
 
+      {tab === 'installed' && (
+      <div className="space-y-6">
         <section>
           <h3 className="text-sm font-semibold mb-2 text-white/70">Installed plugins</h3>
           <ul className="divide-y divide-white/5 rounded-xl border border-white/10">
@@ -666,7 +852,13 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
                     {p.id}
                     {p.version ? ` · v${p.version}` : ''}
                   </span>
-                  {!p.loaded && <span className="ml-2 text-xs text-amber-300">not loaded yet — rebuild & restart</span>}
+                  {!p.loaded && !p.incompatible && <span className="ml-2 text-xs text-amber-300">not loaded yet — rebuild & restart</span>}
+                  {p.incompatible && <span className="ml-2 text-xs text-red-300">{p.incompatible}</span>}
+                  {catalog?.items.find((c) => c.id === p.id)?.updateAvailable && (
+                    <button className="ml-2 text-xs text-[var(--accent)] hover:underline" onClick={() => installFromCatalog(catalog.items.find((c) => c.id === p.id)!)}>
+                      update to v{catalog.items.find((c) => c.id === p.id)!.version}
+                    </button>
+                  )}
                 </span>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wider ${p.source === 'custom' ? 'bg-[var(--accent)]/15 text-[var(--accent)]' : 'bg-white/5 text-white/40'}`}>
                   {p.source}
@@ -683,6 +875,7 @@ function InstallPluginDialog({ onClose }: { onClose: () => void }) {
           {custom.length === 0 && installed.length > 0 && <p className="mt-2 text-xs text-white/40">No custom plugins installed yet.</p>}
         </section>
       </div>
+      )}
     </Modal>
   );
 }

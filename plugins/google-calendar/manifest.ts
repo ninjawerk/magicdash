@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'Schedule (Google Calendar)',
   description: 'What’s happening now, what’s next and how long until it. Pulses red in the final minute of an event. Google account or any ICS feed.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '📅',
   defaultSize: { w: 6, h: 4 },

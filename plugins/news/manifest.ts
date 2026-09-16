@@ -5,6 +5,8 @@ const manifest: PluginManifest = {
   name: 'News headlines',
   description: 'Headlines from any RSS or Atom feed — rotating big headline or a compact list.',
   version: '1.0.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'MagicDash',
   icon: '📰',
   defaultSize: { w: 4, h: 2 },

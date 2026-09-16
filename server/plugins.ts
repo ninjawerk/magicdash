@@ -2,7 +2,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import express, { Router } from 'express';
-import type { PluginManifest } from '../src/sdk/types';
+import { compatibilityIssue, type PluginManifest } from '../src/sdk/types';
+import { HOST_VERSION } from './version';
 import type { PluginServerContext, ServerPluginSetup, SettingsStore } from '../src/sdk/server';
 import { createCache } from './cache';
 import { broadcast } from './events';
@@ -82,6 +83,11 @@ export async function loadPlugins(publicUrl: () => string): Promise<LoadedPlugin
       if (!manifest?.id) throw new Error('manifest.ts must default-export a PluginManifest with an id');
       if (manifest.id !== entry.name) {
         console.warn(`[plugins] folder "${entry.name}" has manifest id "${manifest.id}" — folder name should match.`);
+      }
+      const issue = compatibilityIssue(manifest, HOST_VERSION);
+      if (issue) {
+        console.error(`[plugins] skipping "${manifest.id}": ${issue}`);
+        continue;
       }
 
       const router = Router();

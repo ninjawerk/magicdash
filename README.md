@@ -231,9 +231,15 @@ image/         Flashable Raspberry Pi OS image builder + first-boot provisioner 
 data/          Runtime state (layout.json, settings.json, plugin data) — git-ignored
 ```
 
-## Installing a custom plugin
+## Installing more plugins
 
-*Edit → Add → Install a plugin…* and upload a plugin `.zip` or folder. The dashboard writes it to `plugins/`,
+*Edit → Add → Browse & install plugins…* opens the **catalog**: a JSON index (default:
+[ninjawerk/magicdash-plugins](https://github.com/ninjawerk/magicdash-plugins)) that the dashboard downloads and
+searches locally. Each entry is pinned to a GitHub release zip and its SHA-256, which is verified before install.
+Entries are labelled **reviewed** (a maintainer read that version) or **unreviewed** (listed on trust alone) — read
+the label, because a plugin runs code on the Pi. You can add more indexes under *Sources* (a gist works fine).
+
+The **Upload** tab takes a plugin `.zip` or folder. The dashboard writes it to `plugins/`,
 rebuilds and restarts itself; the new widget then shows up in the Add dialog. Custom plugins can be removed from
 the same dialog. Only install plugins you trust — they run on the Pi. Disable browser upload with
 `MAGICDASH_PLUGIN_UPLOAD=off` in the systemd unit.

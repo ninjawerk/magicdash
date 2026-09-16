@@ -10,6 +10,8 @@ const manifest: PluginManifest = {
   name: 'My plugin',
   description: 'One sentence about what this tile shows.',
   version: '0.1.0',
+  sdkVersion: 1,
+  minHost: '0.1.0',
   author: 'you',
   icon: '🧩',
   defaultSize: { w: 3, h: 2 },
