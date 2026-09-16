@@ -204,6 +204,8 @@ const THEME_FIELDS: ConfigField[] = [
   { key: 'background', label: 'Background', type: 'textarea', rows: 2, help: 'Any CSS background: a color, gradient or url(...).' },
   { key: 'accent', label: 'Accent color', type: 'color' },
   { key: 'fg', label: 'Text color', type: 'color' },
+  { key: 'cool', label: 'Cool tone', type: 'color', help: 'Used for cold temperatures, water, "off" states.' },
+  { key: 'warm', label: 'Warm tone', type: 'color', help: 'Used for heat, sun, "on" states.' },
   { key: 'tileBackground', label: 'Tile background', type: 'string', help: 'e.g. rgba(255,255,255,0.05)' },
   { key: 'surface', label: 'Dialog & toolbar background', type: 'color' },
   { key: 'tileRadius', label: 'Tile corner radius', type: 'number', min: 0, max: 60, unit: 'px' },

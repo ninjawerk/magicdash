@@ -57,6 +57,8 @@ export function defaultLayout(): DashboardLayout {
       fg: '#e7ebf3',
       surface: '#121826',
       dark: true,
+      cool: '#7cc4ff',
+      warm: '#ff9f68',
       preset: 'midnight',
     },
     widgets: [

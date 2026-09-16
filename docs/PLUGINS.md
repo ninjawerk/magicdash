@@ -145,7 +145,8 @@ export default definePlugin({ manifest, Widget, SettingsPanel: ({ settings, api,
 ### Styling
 
 Tailwind v4 utility classes are available. The host sets CSS variables you can lean on:
-`var(--accent)`, `var(--tile-bg)`, `var(--tile-radius)`. Tiles are dark; use white text with opacity for hierarchy.
+`var(--accent)`, `var(--fg)` (text), `var(--cool)` and `var(--warm)` (a cold and a hot tone per theme — use them for
+temperatures, on/off, water/sun instead of hard-coded blues and yellows), `var(--surface)`, `var(--tile-bg)`, `var(--tile-radius)`. Tiles are dark; use white text with opacity for hierarchy.
 Add `tabular` to numbers that tick so they don't jitter. Fonts: Inter (body), JetBrains Mono (`font-mono`).
 
 Your widget fills the tile's content area (below the optional title bar). Use `size.width/height` for

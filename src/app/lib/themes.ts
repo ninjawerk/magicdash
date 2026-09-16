@@ -20,6 +20,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#e7ebf3',
     surface: '#121826',
     dark: true,
+    cool: '#7cc4ff',
+    warm: '#ff9f68',
     showTitles: true,
   },
   {
@@ -33,6 +35,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#f2f2f2',
     surface: '#141416',
     dark: true,
+    cool: '#4da3ff',
+    warm: '#ff8a5b',
     showTitles: true,
   },
   {
@@ -46,6 +50,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#eceff4',
     surface: '#3b4252',
     dark: true,
+    cool: '#88c0d0',
+    warm: '#d08770',
     showTitles: true,
   },
   {
@@ -59,6 +65,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#f8f8f2',
     surface: '#343746',
     dark: true,
+    cool: '#8be9fd',
+    warm: '#ffb86c',
     showTitles: true,
   },
   {
@@ -72,6 +80,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#eee8d5',
     surface: '#0b3a47',
     dark: true,
+    cool: '#2aa198',
+    warm: '#cb4b16',
     showTitles: true,
   },
   {
@@ -85,6 +95,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#e6f2ea',
     surface: '#16241c',
     dark: true,
+    cool: '#8be0c8',
+    warm: '#e9c46a',
     showTitles: true,
   },
   {
@@ -98,6 +110,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#e3f6ff',
     surface: '#0f2a44',
     dark: true,
+    cool: '#4ecdc4',
+    warm: '#ffb677',
     showTitles: true,
   },
   {
@@ -111,6 +125,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#fff7f0',
     surface: '#3d2151',
     dark: true,
+    cool: '#9ad0ff',
+    warm: '#ffd166',
     showTitles: true,
   },
   {
@@ -124,6 +140,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#fbeff5',
     surface: '#2a1620',
     dark: true,
+    cool: '#a8c5ff',
+    warm: '#ff7ab6',
     showTitles: true,
   },
   {
@@ -137,6 +155,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#1f2933',
     surface: '#ffffff',
     dark: false,
+    cool: '#2563eb',
+    warm: '#dc6803',
     showTitles: true,
   },
   {
@@ -150,6 +170,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     fg: '#111827',
     surface: '#ffffff',
     dark: false,
+    cool: '#2563eb',
+    warm: '#ea580c',
     showTitles: true,
   },
 ];
@@ -178,6 +200,8 @@ export function applyTheme(t: Theme) {
   root.style.setProperty('--surface', t.surface);
   // Tailwind's `white` utilities resolve to this variable, so every text-white/… and bg-white/… follows the theme.
   root.style.setProperty('--color-white', t.fg);
+  root.style.setProperty('--cool', t.cool);
+  root.style.setProperty('--warm', t.warm);
   root.style.colorScheme = t.dark ? 'dark' : 'light';
   document.body.style.background = t.background;
   document.body.style.color = t.fg;

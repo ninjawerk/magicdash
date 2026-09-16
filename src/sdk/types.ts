@@ -125,6 +125,10 @@ export interface DashboardLayout {
     surface: string;
     /** Whether the theme is dark (affects native controls). */
     dark: boolean;
+    /** A cool tone (cold temperatures, water, "off"). Exposed as --cool. */
+    cool: string;
+    /** A warm tone (heat, sun, "on"). Exposed as --warm. */
+    warm: string;
     /** Id of the preset this theme was based on, if any. */
     preset?: string;
   };

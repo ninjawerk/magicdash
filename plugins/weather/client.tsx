@@ -88,36 +88,18 @@ function LocationField({ value, onChange, api }: CustomFieldProps<Location | und
 // ---------------------------------------------------------------------------
 // Colour helpers
 // ---------------------------------------------------------------------------
-/** Temperature → colour (input in °C). Cold blues through greens/yellows to hot reds. */
+/**
+ * Temperature → colour, from the theme: cold → --cool, mild → text colour, hot → --warm.
+ * Input in °C. Returns a CSS color-mix() expression so it follows theme changes live.
+ */
 function tempColor(c: number): string {
-  const stops: Array<[number, string]> = [
-    [-15, '#9ec5ff'],
-    [0, '#7cc4ff'],
-    [8, '#8be0c8'],
-    [16, '#c8e87a'],
-    [22, '#ffd166'],
-    [28, '#ff9f68'],
-    [34, '#ff6b6b'],
-    [42, '#e8407a'],
-  ];
-  if (c <= stops[0][0]) return stops[0][1];
-  for (let i = 1; i < stops.length; i++) {
-    if (c <= stops[i][0]) {
-      const [t0, c0] = stops[i - 1];
-      const [t1, c1] = stops[i];
-      return mix(c0, c1, (c - t0) / (t1 - t0));
-    }
+  const t = Math.max(0, Math.min(1, (c + 5) / 35)); // -5°C → 0, 30°C → 1
+  if (t < 0.5) {
+    const pct = Math.round((1 - t * 2) * 100); // 100% cool at the cold end
+    return `color-mix(in oklab, var(--cool) ${pct}%, var(--fg))`;
   }
-  return stops[stops.length - 1][1];
-}
-function mix(a: string, b: string, t: number): string {
-  const pa = hex(a);
-  const pb = hex(b);
-  const r = pa.map((v, i) => Math.round(v + (pb[i] - v) * Math.max(0, Math.min(1, t))));
-  return `rgb(${r[0]},${r[1]},${r[2]})`;
-}
-function hex(h: string): number[] {
-  return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const pct = Math.round((t - 0.5) * 2 * 100); // 100% warm at the hot end
+  return `color-mix(in oklab, var(--warm) ${pct}%, var(--fg))`;
 }
 const toC = (t: number, units: string) => (units === 'imperial' ? ((t - 32) * 5) / 9 : t);
 
@@ -252,13 +234,13 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
 
         {/* Detail chips */}
         {showChips && (
-          <div className="flex flex-nowrap gap-1.5 overflow-hidden">
-            <Chip icon={<Thermometer size={12} />} color="#ff9f68" label="Feels" value={`${Math.round(cur.feelsLike)}°`} />
-            <Chip icon={<Droplets size={12} />} color="#7cc4ff" label="Humidity" value={`${cur.humidity}%`} />
-            {W >= 400 && <Chip icon={<Wind size={12} />} color="#8be0c8" label="Wind" value={`${Math.round(cur.wind)} ${speed}`} />}
-            {W >= 470 && <Chip icon={<Sun size={12} />} color="#ffd166" label="UV" value={`${Math.round(cur.uv)}`} />}
-            {W >= 560 && today && <Chip icon={<Sunrise size={12} />} color="#ffb366" label="Sunrise" value={fmtTime(today.sunrise)} />}
-            {W >= 640 && today && <Chip icon={<Sunset size={12} />} color="#c3a6ff" label="Sunset" value={fmtTime(today.sunset)} />}
+          <div className="mt-2 flex flex-nowrap gap-1.5 overflow-hidden">
+            <Chip icon={<Thermometer size={12} />} color="var(--warm)" label="Feels" value={`${Math.round(cur.feelsLike)}°`} />
+            <Chip icon={<Droplets size={12} />} color="var(--cool)" label="Humidity" value={`${cur.humidity}%`} />
+            {W >= 400 && <Chip icon={<Wind size={12} />} color="color-mix(in oklab, var(--cool) 60%, var(--fg))" label="Wind" value={`${Math.round(cur.wind)} ${speed}`} />}
+            {W >= 470 && <Chip icon={<Sun size={12} />} color="var(--warm)" label="UV" value={`${Math.round(cur.uv)}`} />}
+            {W >= 560 && today && <Chip icon={<Sunrise size={12} />} color="var(--warm)" label="Sunrise" value={fmtTime(today.sunrise)} />}
+            {W >= 640 && today && <Chip icon={<Sunset size={12} />} color="var(--accent)" label="Sunset" value={fmtTime(today.sunset)} />}
           </div>
         )}
 
@@ -272,7 +254,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
                 <span className="text-xs font-semibold tabular" style={{ color: tempColor(toC(h.temp, units)) }}>
                   {Math.round(h.temp)}°
                 </span>
-                <span className="h-3 text-[9px] text-sky-300">{h.precipProb > 15 ? `${h.precipProb}%` : ''}</span>
+                <span className="h-3 text-[9px] text-[var(--cool)]">{h.precipProb > 15 ? `${h.precipProb}%` : ''}</span>
               </div>
             ))}
           </div>
@@ -288,7 +270,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
                 <div key={day.date} className="flex items-center gap-2.5 py-[3px] text-sm" style={{ minHeight: 30 }}>
                   <span className="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-white/55">{i === 0 ? 'Today' : fmtDay(day.date)}</span>
                   <WeatherIcon code={day.code} size={20} className="shrink-0" />
-                  <span className="w-8 shrink-0 text-right text-[10px] text-sky-300 tabular">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
+                  <span className="w-8 shrink-0 text-right text-[10px] text-[var(--cool)] tabular">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
                   <span className="w-7 shrink-0 text-right text-xs tabular text-white/60">{Math.round(day.tMin)}°</span>
                   <span className="relative h-1.5 flex-1 rounded-full bg-white/10">
                     <span
@@ -320,7 +302,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
                   </span>{' '}
                   <span className="text-white/45">{Math.round(day.tMin)}°</span>
                 </span>
-                <span className="h-3 text-[9px] text-sky-300">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
+                <span className="h-3 text-[9px] text-[var(--cool)]">{day.precipProb > 15 ? `${day.precipProb}%` : ''}</span>
               </div>
             ))}
           </div>
