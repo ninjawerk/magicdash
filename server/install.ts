@@ -19,7 +19,7 @@ import { PLUGINS_DIR, allPlugins } from './plugins';
 import { HOST_VERSION } from './version';
 import { compatibilityIssue } from '../src/sdk/types';
 
-export const BUNDLED_PLUGINS = new Set(['clock', 'google-calendar', 'home-assistant', 'quotes', 'random-image', 'weather', 'news', 'word-of-the-day', 'qr-code']);
+export const BUNDLED_PLUGINS = new Set(['clock', 'google-calendar', 'home-assistant', 'quotes', 'random-image', 'weather', 'news', 'word-of-the-day', 'qr-code', 'rahu-kaala']);
 const RESERVED_IDS = new Set(['install', 'installed', 'rebuild', 'upload', '_template']);
 const ALLOWED_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.css', '.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2']);
 const MAX_FILES = 200;

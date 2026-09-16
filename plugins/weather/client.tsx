@@ -129,9 +129,9 @@ function glowColor(code: number, isDay: boolean): string {
 // ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
-function WeatherWidget({ config, api, size, openSettings, editMode, setBackground }: WidgetProps<Config>) {
-  const loc = config.location;
-  const units = config.units ?? 'metric';
+function WeatherWidget({ config, api, size, openSettings, editMode, setBackground, context }: WidgetProps<Config>) {
+  const loc = config.location ?? context.location;
+  const units = (config.units || context.units || 'metric') as 'metric' | 'imperial';
   const fc = usePluginQuery<Forecast>(api, '/forecast', {
     enabled: !!loc,
     query: loc ? { lat: loc.lat, lon: loc.lon, units, name: loc.name } : undefined,
@@ -181,7 +181,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
   if (!loc) {
     return (
       <Empty onClick={editMode ? openSettings : undefined}>
-        <MapPin /> <span>Choose a location in this tile’s settings.</span>
+        <MapPin /> <span>Choose a location in this tile’s settings, or set the dashboard location under Appearance → Dashboard.</span>
       </Empty>
     );
   }

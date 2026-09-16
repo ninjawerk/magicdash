@@ -132,6 +132,36 @@ async function main() {
 
   app.get('/api/events', (_req, res) => addSseClient(res));
 
+  /** GET /api/geocode?q=berlin — city search for the dashboard location (Open-Meteo, no key). */
+  const geoCache = new Map<string, unknown>();
+  app.get('/api/geocode', async (req, res) => {
+    const q = String(req.query.q ?? '').trim();
+    if (q.length < 2) {
+      res.json([]);
+      return;
+    }
+    const coords = q.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (coords) {
+      res.json([{ name: `${coords[1]}, ${coords[2]}`, lat: Number(coords[1]), lon: Number(coords[2]) }]);
+      return;
+    }
+    const key = q.toLowerCase();
+    if (!geoCache.has(key)) {
+      try {
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`);
+        const data = (await r.json()) as { results?: Array<Record<string, unknown>> };
+        geoCache.set(
+          key,
+          (data.results ?? []).map((x) => ({ name: x.name, country: x.country, admin: x.admin1, lat: x.latitude, lon: x.longitude, timezone: x.timezone })),
+        );
+      } catch (e) {
+        res.status(502).json({ error: (e as Error).message });
+        return;
+      }
+    }
+    res.json(geoCache.get(key));
+  });
+
   // --- Host controls (used by the MCP server and by automations, e.g. a Home Assistant curl) --------
   /** POST /api/screens/show { screenId } — switch every connected dashboard to a screen (no lock). */
   app.post('/api/screens/show', (req, res) => {

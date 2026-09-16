@@ -46,6 +46,7 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 | 📰 **News headlines** | Any RSS/Atom feeds — rotating big headline with the article image as background, or a list. |
 | 📖 **Word of the day** | Merriam-Webster or Wiktionary, with pronunciation and definition. |
 | 🔳 **QR code** | Guest Wi-Fi login, a link or any text as a scannable code. |
+| 🪐 **Rahu Kaala** | Today’s Rahu Kaala (plus Yamagandam, Gulika) from local sunrise/sunset, live countdown, red while running. Offline. |
 
 ## Quick start (development)
 
@@ -254,9 +255,15 @@ Feeds refresh every minute.
 
 Then in each Schedule tile pick which calendars to show.
 
+### Dashboard location, name and units
+
+*Appearance → Dashboard* sets facts every tile can use: your location (city search or `lat, lon`), your name (greetings)
+and units. Weather, Rahu Kaala and the greeting use them unless a tile sets its own. Plugins receive them as
+`props.context`.
+
 ### Weather
 
-Per tile: search a city (or type `lat, lon`), pick units. No key required.
+Per tile: optionally a location and units (defaults come from the dashboard). No key required.
 
 ### Home Assistant
 

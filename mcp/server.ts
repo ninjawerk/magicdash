@@ -237,6 +237,18 @@ server.registerTool(
   },
 );
 server.registerTool(
+  'set_context',
+  { description: 'Dashboard-wide facts shared with all tiles: location {name, lat, lon, country?, timezone?}, name (for greetings), units (metric|imperial). Pass null for a key to clear it.', inputSchema: { context: z.record(z.string(), z.unknown()) } },
+  async ({ context }) => {
+    const l = await getLayout();
+    const next = { ...((l as unknown as { context?: Record<string, unknown> }).context ?? {}) };
+    for (const [k, v] of Object.entries(context)) v === null ? delete next[k] : (next[k] = v);
+    (l as unknown as { context?: Record<string, unknown> }).context = next;
+    await putLayout(l);
+    return text(next);
+  },
+);
+server.registerTool(
   'set_grid',
   { description: 'Grid settings.', inputSchema: { cols: z.number().int().min(4).max(48).optional(), rows: z.number().int().min(2).max(32).optional(), gap: z.number().optional(), padding: z.number().optional() } },
   async (g) => {

@@ -72,6 +72,12 @@ ring buffer streamed as `$host/log`. Updates: `server/update.ts` (`git fetch` co
 `git pull --ff-only` → `npm ci` → `npm run build` → exit in prod, streamed as `$host/update`). MCP passes `MAGICDASH_TOKEN`
 as a bearer token.
 
+## Dashboard context
+
+`layout.context` (`DashboardContext`: location, name, units) is edited under Appearance → Dashboard and passed to every
+widget as `props.context`. `GET /api/geocode?q=` (public, cached) backs the host `LocationPicker`. Plugins use context as
+defaults and let a tile override (weather, rahu-kaala, quotes/greeting).
+
 ## Display, notify, schedules, bus, i18n
 
 - `server/display.ts`: state `{ on, brightness, hardware }` broadcast as `$host/display`; evaluates schedule / night mode
