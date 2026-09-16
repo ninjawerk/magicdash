@@ -8,3 +8,16 @@ data/
 .claude/
 *.zip
 image/out/
+
+# Installed community plugins live in plugins/ but are not part of this repo
+plugins/*
+!plugins/_template/
+!plugins/clock/
+!plugins/google-calendar/
+!plugins/home-assistant/
+!plugins/quotes/
+!plugins/random-image/
+!plugins/weather/
+!plugins/news/
+!plugins/word-of-the-day/
+!plugins/qr-code/

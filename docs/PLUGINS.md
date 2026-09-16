@@ -64,6 +64,7 @@ The host renders a form from these. No settings UI code needed.
 { type: 'number', min?, max?, step?, unit?, default? }
 { type: 'boolean', default? }
 { type: 'color', default? }
+{ type: 'date' | 'datetime' | 'time', default?, min?, max? }   // native pickers; stored as YYYY-MM-DD / YYYY-MM-DDTHH:MM / HH:MM
 { type: 'select',      options?: [{label, value}], optionsFrom?: 'path' }
 { type: 'multiselect', options?: [{label, value, description?, group?}], optionsFrom?: 'path' }
 { type: 'list', itemLabel?, placeholder?, default?: string[] }

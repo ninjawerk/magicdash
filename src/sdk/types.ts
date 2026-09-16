@@ -38,6 +38,12 @@ export type ConfigField =
   | (BaseField & { type: 'number'; min?: number; max?: number; step?: number; default?: number; unit?: string })
   | (BaseField & { type: 'boolean'; default?: boolean })
   | (BaseField & { type: 'color'; default?: string })
+  /** Calendar date, stored as "YYYY-MM-DD". */
+  | (BaseField & { type: 'date'; default?: string; min?: string; max?: string })
+  /** Local date and time, stored as "YYYY-MM-DDTHH:MM" (no zone — the kiosk's local time). */
+  | (BaseField & { type: 'datetime'; default?: string; min?: string; max?: string })
+  /** Time of day, stored as "HH:MM". */
+  | (BaseField & { type: 'time'; default?: string })
   | (BaseField & {
       type: 'select';
       default?: string;
