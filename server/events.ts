@@ -18,9 +18,23 @@ export function addSseClient(res: Response) {
   });
 }
 
+const internal = new Set<(ev: PluginEvent) => void>();
+/** Server-side subscription to everything that is broadcast (used by the display module to watch HA states). */
+export function onBroadcast(fn: (ev: PluginEvent) => void): () => void {
+  internal.add(fn);
+  return () => internal.delete(fn);
+}
+
 export function broadcast(ev: PluginEvent) {
   const data = `data: ${JSON.stringify(ev)}\n\n`;
   for (const c of clients) c.write(data);
+  internal.forEach((fn) => {
+    try {
+      fn(ev);
+    } catch (e) {
+      console.error('[events] listener failed', e);
+    }
+  });
 }
 
 export function clientCount() {

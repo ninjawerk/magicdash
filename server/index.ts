@@ -12,6 +12,8 @@ import { registerCatalogRoutes } from './catalog';
 import { loadAuth, registerAuthRoutes, requireAuth } from './auth';
 import { installLogCapture, registerLogRoutes } from './logs';
 import { registerUpdateRoutes } from './update';
+import { registerNotifyRoutes } from './notify';
+import { reevaluateDisplay, registerDisplayRoutes, startDisplay } from './display';
 import { HOST_VERSION } from './version';
 import { SDK_VERSION } from '../src/sdk/types';
 
@@ -89,6 +91,7 @@ async function main() {
     await layoutStore.set(body);
     broadcast({ plugin: '$host', event: 'layout', payload: body });
     res.json({ ok: true });
+    void reevaluateDisplay('layout changed');
   });
 
   /** Plugin-wide settings with secrets masked. */
@@ -191,6 +194,9 @@ async function main() {
   registerCatalogRoutes(app);
   registerLogRoutes(app);
   registerUpdateRoutes(app);
+  registerNotifyRoutes(app);
+  registerDisplayRoutes(app);
+  await startDisplay();
 
   // --- Plugin routers -----------------------------------------------------------
   for (const p of allPlugins()) {

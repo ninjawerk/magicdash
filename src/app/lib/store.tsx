@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AttentionLock, DashboardLayout, Screen, WidgetInstance } from '@sdk';
+import type { AttentionLock, DashboardLayout, DisplayState, Screen, Toast, WidgetInstance } from '@sdk';
+import { inWindow } from '@sdk';
+import { setLocale } from '@sdk/i18n';
 import { ATTENTION_COOLDOWN_MS, ATTENTION_MAX_MS, allWidgets, defaultsFor, normalizeLayout } from '@sdk';
 import { subscribeEvents, createPluginApi, type PluginApi } from '@sdk/client';
 import { hostApi } from './api';
@@ -54,6 +56,15 @@ interface Store {
   renameScreen: (id: string, name: string) => void;
   moveScreen: (id: string, dir: -1 | 1) => void;
 
+  // Toasts & display
+  toasts: Toast[];
+  dismissToast: (id: string) => void;
+  notify: (t: { message: string; title?: string; level?: Toast['level']; durationSec?: number; icon?: string }) => void;
+  display: DisplayState | null;
+  wakeDisplay: () => void;
+  /** Screens currently allowed by their schedule. */
+  visibleScreens: Screen[];
+
   // Attention lock
   attention: AttentionLock | null;
   requestAttention: (holder: string, pluginId: string, screenId: string, reason?: string) => boolean;
@@ -88,6 +99,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [activeScreenId, setActiveScreenId] = useState('main');
   const [attention, setAttention] = useState<AttentionLock | null>(null);
   const [auth, setAuth] = useState<AuthState>({ configured: false, authenticated: false, loaded: false });
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [display, setDisplay] = useState<DisplayState | null>(null);
+  const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000));
+  useEffect(() => {
+    const id = setInterval(() => setMinute(Math.floor(Date.now() / 60_000)), 15_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  const pushToast = useCallback(
+    (toast: Toast) => {
+      setToasts((t) => [...t.filter((x) => x.id !== toast.id).slice(-4), toast]);
+      if (toast.durationSec > 0) setTimeout(() => dismissToast(toast.id), toast.durationSec * 1000);
+    },
+    [dismissToast],
+  );
+  const notify = useCallback(
+    (t: { message: string; title?: string; level?: Toast['level']; durationSec?: number; icon?: string }) =>
+      pushToast({ id: Math.random().toString(36).slice(2), message: t.message, title: t.title, level: t.level ?? 'info', durationSec: t.durationSec ?? 8, icon: t.icon, at: new Date().toISOString() }),
+    [pushToast],
+  );
+  const wakeDisplay = useCallback(() => {
+    fetch('/api/display', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ on: true, forSeconds: 300 }) }).catch(() => undefined);
+    setDisplay((d) => (d ? { ...d, on: true } : d));
+  }, []);
+  useEffect(() => {
+    fetch('/api/display')
+      .then((r) => r.json())
+      .then((d: { state: DisplayState }) => setDisplay(d.state))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => setLocale(layout?.locale), [layout?.locale]);
+  const visibleScreens = useMemo(() => {
+    const now = new Date(minute * 60_000);
+    const all = layout?.screens ?? [];
+    const ok = all.filter((s) => inWindow(s.schedule, now));
+    return ok.length ? ok : all.slice(0, 1);
+  }, [layout?.screens, minute]);
 
   const refreshAuth = useCallback(async () => {
     const st = await hostApi.authStatus().catch(() => ({ configured: false, authenticated: false }));
@@ -325,7 +374,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const releaseAttentionPublic = useCallback((holder: string) => releaseAttention(holder, false), [releaseAttention]);
 
   // --- Rotation timer ------------------------------------------------------------------
-  const rotationOn = !!layout?.rotation.enabled && (layout?.screens.length ?? 0) > 1 && !editMode && dialog.kind === 'none' && !attention;
+  const rotationOn = !!layout?.rotation.enabled && visibleScreens.length > 1 && !editMode && dialog.kind === 'none' && !attention;
+  const visibleRef = useRef(visibleScreens);
+  visibleRef.current = visibleScreens;
+  // If the active screen is scheduled out (and we're not editing), move to the first visible one.
+  useEffect(() => {
+    if (editMode || attention) return;
+    if (!visibleScreens.some((s) => s.id === activeScreenId) && visibleScreens[0]) setActiveScreenId(visibleScreens[0].id);
+  }, [visibleScreens, activeScreenId, editMode, attention]);
   const intervalSec = layout?.rotation.intervalSec ?? 30;
   useEffect(() => {
     if (!rotationOn) return;
@@ -334,8 +390,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!l) return;
       rotationTick.current++;
       setActiveScreenId((cur) => {
-        const i = l.screens.findIndex((s) => s.id === cur);
-        return l.screens[(i + 1) % l.screens.length].id;
+        const list = visibleRef.current.length ? visibleRef.current : l.screens;
+        const i = list.findIndex((s) => s.id === cur);
+        return list[(i + 1) % list.length].id;
       });
     }, intervalSec * 1000);
     return () => clearInterval(id);
@@ -357,6 +414,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (ev.plugin !== '$host') return;
+      if (ev.event === 'notify') {
+        const t = ev.payload as Toast;
+        if (t.screen) {
+          const l = layoutRef.current;
+          const sc = l?.screens.find((s) => s.id === t.screen || s.name.toLowerCase() === t.screen!.toLowerCase());
+          if (sc && t.switchScreen && !attentionRef.current) showScreen(sc.id);
+        }
+        pushToast(t);
+        return;
+      }
+      if (ev.event === 'display') {
+        setDisplay(ev.payload as DisplayState);
+        return;
+      }
       if (ev.event === 'showScreen') {
         const { screenId } = ev.payload as { screenId: string };
         if (!attentionRef.current) showScreen(screenId);
@@ -380,7 +451,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         reloadPluginSettings(pluginId);
       }
     });
-  }, [reloadPluginSettings, applyIncoming, requestAttention, releaseAttention, showScreen]);
+  }, [reloadPluginSettings, applyIncoming, requestAttention, releaseAttention, showScreen, pushToast]);
 
   const value = useMemo<Store>(
     () => ({
@@ -410,6 +481,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeScreen,
       renameScreen,
       moveScreen,
+      toasts,
+      dismissToast,
+      notify,
+      display,
+      wakeDisplay,
+      visibleScreens,
       attention,
       requestAttention,
       releaseAttention: releaseAttentionPublic,
@@ -438,6 +515,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeScreen,
       renameScreen,
       moveScreen,
+      toasts,
+      dismissToast,
+      notify,
+      display,
+      wakeDisplay,
+      visibleScreens,
       attention,
       requestAttention,
       releaseAttentionPublic,

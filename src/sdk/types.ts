@@ -99,6 +99,30 @@ export interface PluginManifest {
   frameless?: boolean;
 }
 
+/**
+ * When something is visible. `from`/`to` are "HH:MM" local times (a window may wrap midnight);
+ * `days` are 0-6 (Sunday = 0). Omitted parts mean "always".
+ */
+export interface TimeWindow {
+  from?: string;
+  to?: string;
+  days?: number[];
+}
+
+/** True when `now` is inside the window (or the window is empty). */
+export function inWindow(w: TimeWindow | undefined, now: Date): boolean {
+  if (!w) return true;
+  if (w.days && w.days.length > 0 && !w.days.includes(now.getDay())) return false;
+  if (!w.from || !w.to) return true;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const [fh, fm] = w.from.split(':').map(Number);
+  const [th, tm] = w.to.split(':').map(Number);
+  const f = fh * 60 + (fm || 0);
+  const t = th * 60 + (tm || 0);
+  if (f === t) return true;
+  return f < t ? mins >= f && mins < t : mins >= f || mins < t; // wraps midnight
+}
+
 /** One tile on the dashboard. */
 export interface WidgetInstance {
   id: string;
@@ -110,6 +134,8 @@ export interface WidgetInstance {
   /** Optional custom title for the tile chrome. */
   title?: string;
   config: Record<string, unknown>;
+  /** Only show this tile inside the window (e.g. news 06:00–09:00 on weekdays). */
+  schedule?: TimeWindow;
 }
 
 export interface GridSettings {
@@ -126,6 +152,19 @@ export interface Screen {
   id: string;
   name: string;
   widgets: WidgetInstance[];
+  /** Only include this screen in rotation inside the window. */
+  schedule?: TimeWindow;
+}
+
+/** Dashboard-wide night mode: dim and optionally switch theme preset during a window. */
+export interface NightMode {
+  enabled: boolean;
+  from: string;
+  to: string;
+  /** 10–100 (%). Applied as a software dim on the kiosk and as backlight level where supported. */
+  brightness: number;
+  /** Theme preset id to use during night mode (optional). */
+  preset?: string;
 }
 
 export interface RotationSettings {
@@ -160,6 +199,9 @@ export interface DashboardLayout {
   /** Screens in rotation order. */
   screens: Screen[];
   rotation: RotationSettings;
+  /** BCP-47 locale for host + plugin strings and date formatting, e.g. "en-GB", "de". Empty = browser default. */
+  locale?: string;
+  night?: NightMode;
   /** @deprecated pre-screens layouts stored tiles here; the server migrates them into screens[0]. */
   widgets?: WidgetInstance[];
   /** Global look. */
@@ -187,6 +229,32 @@ export interface DashboardLayout {
   };
 }
 
+/** A toast shown over the dashboard (host event `$host/notify`). */
+export interface Toast {
+  id: string;
+  title?: string;
+  message: string;
+  level: 'info' | 'success' | 'warn' | 'error';
+  /** Seconds before it auto-dismisses; 0 = sticky until tapped. */
+  durationSec: number;
+  /** Emoji or short text. */
+  icon?: string;
+  /** Show only on this screen (id or name); switches to it when `switchScreen` is set. */
+  screen?: string;
+  switchScreen?: boolean;
+  at: string;
+}
+
+/** Display power / brightness state (host event `$host/display`). */
+export interface DisplayState {
+  on: boolean;
+  /** 0–100 */
+  brightness: number;
+  /** Whether the server could drive a hardware backlight / output; otherwise the kiosk dims in software. */
+  hardware: { backlight: boolean; power: boolean };
+  reason?: string;
+}
+
 /** Event pushed from a plugin backend to the browser over SSE. */
 export interface PluginEvent<T = unknown> {
   plugin: string;
@@ -206,6 +274,7 @@ export function normalizeLayout(raw: DashboardLayout): DashboardLayout {
   delete l.widgets;
   const r: Partial<RotationSettings> = l.rotation ?? {};
   l.rotation = { enabled: !!r.enabled, intervalSec: Math.max(3, Number(r.intervalSec) || 30) };
+  l.night = { enabled: false, from: '23:00', to: '06:30', brightness: 30, ...(l.night ?? {}) };
   return l;
 }
 

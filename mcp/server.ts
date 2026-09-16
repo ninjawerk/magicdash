@@ -295,6 +295,22 @@ server.registerTool(
 server.registerTool('set_catalog_sources', { description: 'Replace the list of catalog index URLs (raw GitHub file, gist, your own server).', inputSchema: { sources: z.array(z.string().url()) } }, async ({ sources }) =>
   text(await api('PUT', '/api/catalog/sources', { sources })),
 );
+server.registerTool(
+  'notify',
+  { description: 'Show a toast notification on every connected dashboard (e.g. "Washing machine done"). Optional screen to switch to.', inputSchema: { message: z.string(), title: z.string().optional(), level: z.enum(['info', 'success', 'warn', 'error']).optional(), durationSec: z.number().optional(), icon: z.string().optional(), screen: z.string().optional(), switchScreen: z.boolean().optional() } },
+  async (t) => text(await api('POST', '/api/notify', t)),
+);
+server.registerTool('get_display', { description: 'Display power/brightness state, schedule, presence and manual override.', inputSchema: {} }, async () => text(await api('GET', '/api/display')));
+server.registerTool(
+  'set_display',
+  { description: 'Turn the display on/off (optionally for N seconds), set brightness (10-100), or clear the manual override to return to the schedule.', inputSchema: { on: z.boolean().optional(), brightness: z.number().min(10).max(100).optional(), forSeconds: z.number().optional(), clear: z.boolean().optional() } },
+  async (b) => text(await api('POST', '/api/display', b)),
+);
+server.registerTool(
+  'set_display_settings',
+  { description: 'Display schedule (off/on times, days), daytime brightness, Home Assistant presence entities that wake it, wake seconds, stay-on-while-present.', inputSchema: { settings: z.record(z.string(), z.unknown()) } },
+  async ({ settings }) => text(await api('PUT', '/api/display/settings', settings)),
+);
 server.registerTool('rebuild_and_restart', { description: 'Rebuild the frontend and (in production) restart the server so new plugins load. Takes ~1 min on a Pi.', inputSchema: {} }, async () => text(await api('POST', '/api/plugins/rebuild')));
 
 // --- Local repo helpers (when the MCP runs from a checkout) ---------------------------------------------------

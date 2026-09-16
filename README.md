@@ -19,6 +19,12 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 - **Admin panel** at `/admin`, password protected, Home Assistant style: live layout editor, screens, plugins and catalog,
   appearance, backup, live logs, one-click updates, API tokens. The kiosk view itself stays open on your network; editing
   needs the password.
+- **Display control.** Schedule the panel off at night and on in the morning, wake it on motion or presence from Home
+  Assistant, set brightness (hardware backlight on the official Touch Display, software dim elsewhere), and a **night mode**
+  that dims and can switch theme.
+- **Toasts.** `POST /api/notify {"message": "Washing machine done"}` from any automation pops a notification on every display.
+- **Schedules.** Show a tile only between two times or on certain days; include a screen in rotation only during a window.
+- **Greeting mode.** The quotes tile can greet by time of day and hint at the weather and your next event, in your language.
 - **Edit from anywhere.** The layout lives on the server. Open `/admin` on your phone or laptop, rearrange, and the kiosk
   updates live.
 - **Plugins.** Each widget is a folder in `plugins/` with a manifest, a React component and an optional server module.
@@ -153,7 +159,8 @@ kiosk's edit mode require it (sessions last 30 days per browser). Pages:
 | **Layout** | the real grid in edit mode — drag, resize, add tiles, per-tile settings; the kiosk mirrors it live |
 | **Screens** | add / rename / reorder screens, rotation interval |
 | **Plugins** | plugin-wide settings (Google, Home Assistant, keys), catalog browse/install/update, upload, installed list |
-| **Appearance** | theme presets and colours, grid size |
+| **Appearance** | theme presets and colours, grid size, language |
+| **Display** | on/off, brightness, off/on schedule, presence wake via Home Assistant, night mode |
 | **Backup** | export / import |
 | **Logs** | live tail of the server and plugin logs with level filter and download |
 | **Updates** | compares your checkout with the remote and the latest release; **Update now** runs `git pull`, `npm ci`, `npm run build` and restarts |
@@ -162,9 +169,30 @@ kiosk's edit mode require it (sessions last 30 days per browser). Pages:
 Recovery: `npm run set-password <new>` on the Pi, then `sudo systemctl restart magicdash`. You can also preset the
 password with `MAGICDASH_ADMIN_PASSWORD` in the systemd unit for unattended installs.
 
-What stays public without a password: the dashboard view, plugin data routes the widgets use, `POST /api/screens/show`
-and `POST /api/attention` (for automations). Everything that changes configuration needs a session cookie or an
+What stays public without a password: the dashboard view, plugin data routes the widgets use, `POST /api/screens/show`,
+`POST /api/attention` and `POST /api/notify` (for automations; notify is rate limited). Everything that changes configuration needs a session cookie or an
 `Authorization: Bearer <token>` header.
+
+## Display, toasts and schedules
+
+**Display** (Admin → Display): off/on schedule with weekdays, daytime brightness, night mode (dim between two times,
+optional night theme), and presence wake: pick Home Assistant entities (motion, door, person) that wake the display for
+N seconds or keep it on while home. Hardware paths used when available: `/sys/class/backlight/*` (the install script grants
+the `video` group write access) and `wlr-randr` / `vcgencmd` for output power (or your own `MAGICDASH_DISPLAY_ON/OFF`
+commands). Without them the kiosk dims in software and shows a black screen, which still works on any panel.
+
+```bash
+curl -X POST http://<pi>:3210/api/display -H 'Authorization: Bearer md_…' -H 'content-type: application/json' -d '{"on":false}'
+```
+
+**Toasts**: `POST /api/notify` with `message`, optional `title`, `level` (info/success/warn/error), `durationSec`, `icon`,
+`screen` + `switchScreen`. No token needed, max 30 per minute. Plugins can call `ctx.notify()` (server) or `props.notify()`.
+
+**Schedules**: tile settings → *Visibility* (between two times, weekdays); Screens → the ⏱ button per screen sets its
+rotation window. Hidden tiles keep their spot; scheduled-out screens are skipped.
+
+**Language**: Appearance → Language sets the locale for dates and translated strings (host strings and the greeting ship in
+English, German and Dutch; plugins can add their own via `translations` in `definePlugin`).
 
 ## Themes & grid
 

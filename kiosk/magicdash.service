@@ -10,6 +10,10 @@ WorkingDirectory=__DIR__
 Environment=NODE_ENV=production
 Environment=MAGICDASH_PORT=3210
 # Environment=PUBLIC_URL=http://raspberrypi.local:3210
+# Display power via the desktop session's Wayland socket (labwc/wayfire). Adjust the uid / socket if needed,
+# or set MAGICDASH_DISPLAY_ON / MAGICDASH_DISPLAY_OFF to your own commands.
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=WAYLAND_DISPLAY=wayland-0
 ExecStart=__NPM__ start
 Restart=always
 RestartSec=3

@@ -138,6 +138,8 @@ const PUBLIC: Array<[string, RegExp]> = [
   ['*', /^\/api\/plugins\/[a-z0-9-]+\/.+/], // plugin backends (widgets need them; HA toggles etc.)
   ['POST', /^\/api\/screens\/show$/],
   ['POST', /^\/api\/attention$/],
+  ['POST', /^\/api\/notify$/],
+  ['GET', /^\/api\/display$/],
 ];
 export function isPublic(req: Request): boolean {
   return PUBLIC.some(([m, re]) => (m === '*' || m === req.method) && re.test(req.path));

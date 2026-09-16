@@ -114,6 +114,22 @@ export default definePlugin<Config>({ manifest, Widget });
 | `setAlert(bool)` | Turn the tile red & pulsing (the schedule uses it for the final minute) |
 | `setBackground(css)` | Paint the whole tile, title bar included, with a CSS background (the weather tile tints itself by conditions). Keep it translucent. |
 | `attention.request(reason?)` / `.release()` / `.held` / `.busy` | The attention lock (see below). |
+| `notify({ message, title?, level?, durationSec?, icon? })` | Toast on this display. Server side: `ctx.notify()` reaches every display. |
+
+### Talking to other plugins
+
+`publish(topic, payload)` / `useTopic(topic)` / `useSubscribe(topic, handler)` from `src/sdk/client` form a small in-browser
+bus. The latest payload per topic is kept, so late subscribers get it at once. Bundled topics: `weather:current`
+(`WeatherCurrentTopic`) and `calendar:next` (`CalendarNextTopic`). Name yours `<plugin-id>:<thing>`. The greeting mode of the
+quotes plugin is the reference consumer.
+
+### Translations
+
+```ts
+export default definePlugin({ manifest, Widget, translations: { en: { 'hello': 'Hello, {name}' }, de: { 'hello': 'Hallo, {name}' } } });
+const t = useT(manifest.id);  t('hello', { name })
+```
+The locale comes from Appearance → Language (fallback: browser). Missing keys fall back to English, then the key.
 
 ### Screens and the attention lock
 
@@ -137,6 +153,7 @@ first screen that shows one of the plugin's tiles.
 - `usePluginQuery(api, path, { query, refreshMs, enabled, deps })` → `{ data, error, loading, refresh, updatedAt }`
 - `usePluginEvent(pluginId, event, handler)` — receive `ctx.emit()` pushes from your server in real time
 - `useNow(intervalMs)` — re-render on a timer, returns `Date`
+- `publish` / `useTopic` / `useSubscribe` — inter-plugin bus; `useT(pluginId)` — translations
 - `useRotation(length, intervalMs, { random })` — cycle an index (slideshows, quotes)
 - `formatDuration(ms, { seconds })`, `formatTime(date, { hour12 })`, `classNames(...)`
 

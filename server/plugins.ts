@@ -7,6 +7,7 @@ import { HOST_VERSION } from './version';
 import type { PluginServerContext, ServerPluginSetup, SettingsStore } from '../src/sdk/server';
 import { createCache } from './cache';
 import { broadcast } from './events';
+import { notify } from './notify';
 import { DATA_DIR, settingsStore } from './storage';
 
 export const PLUGINS_DIR = path.resolve('plugins');
@@ -120,6 +121,9 @@ export async function loadPlugins(publicUrl: () => string): Promise<LoadedPlugin
           onShutdown: (cb) => loaded.shutdown.push(cb),
           requestAttention: (reason) => broadcast({ plugin: manifest.id, event: '$attention', payload: { action: 'request', reason } }),
           releaseAttention: () => broadcast({ plugin: manifest.id, event: '$attention', payload: { action: 'release' } }),
+          notify: (toast) => {
+            notify(toast);
+          },
         };
         await setup(ctx);
         loaded.hasServer = true;

@@ -8,6 +8,9 @@ import type { ComponentType } from 'react';
 import type { PluginEvent, PluginManifest, SelectOption } from './types';
 
 export * from './types';
+export * from './bus';
+export { useT, translate, getLocale, type Translations } from './i18n';
+import { registerTranslations, type Translations as _Translations } from './i18n';
 
 /** Props every widget receives from the host. */
 export interface WidgetProps<C = Record<string, unknown>> {
@@ -47,6 +50,8 @@ export interface WidgetProps<C = Record<string, unknown>> {
     /** Whether someone else currently holds the lock. */
     busy: boolean;
   };
+  /** Show a toast over the dashboard (this browser only; use ctx.notify on the server to reach every display). */
+  notify: (toast: { message: string; title?: string; level?: 'info' | 'success' | 'warn' | 'error'; durationSec?: number; icon?: string }) => void;
 }
 
 export interface PluginApi {
@@ -72,9 +77,12 @@ export interface ClientPlugin<C = Record<string, unknown>> {
   customFields?: Record<string, ComponentType<CustomFieldProps>>;
   /** Optional rich UI rendered at the top of this plugin's global settings dialog. */
   SettingsPanel?: ComponentType<{ settings: Record<string, unknown>; api: PluginApi; reload: () => void }>;
+  /** Translations keyed by locale, read with `useT(manifest.id)`. */
+  translations?: _Translations;
 }
 
 export function definePlugin<C = Record<string, unknown>>(plugin: ClientPlugin<C>): ClientPlugin<C> {
+  if (plugin.translations) registerTranslations(plugin.manifest.id, plugin.translations);
   return plugin;
 }
 

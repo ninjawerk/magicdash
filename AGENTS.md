@@ -72,6 +72,17 @@ ring buffer streamed as `$host/log`. Updates: `server/update.ts` (`git fetch` co
 `git pull --ff-only` → `npm ci` → `npm run build` → exit in prod, streamed as `$host/update`). MCP passes `MAGICDASH_TOKEN`
 as a bearer token.
 
+## Display, notify, schedules, bus, i18n
+
+- `server/display.ts`: state `{ on, brightness, hardware }` broadcast as `$host/display`; evaluates schedule / night mode
+  (`layout.night`) / presence (listens to the HA plugin's broadcasts via `onBroadcast`) / manual override every 30 s.
+  Hardware: sysfs backlight, `wlr-randr` or `vcgencmd` or `MAGICDASH_DISPLAY_ON/OFF`. Kiosk `DisplayLayer` blacks out / dims.
+- `server/notify.ts`: `POST /api/notify` (public, rate limited) → `$host/notify`; `ctx.notify()` for plugins; kiosk `Toasts`.
+- Schedules: `TimeWindow` + `inWindow()` in types; `WidgetInstance.schedule`, `Screen.schedule`; store computes
+  `visibleScreens`; `ScreenGrid` hides out-of-window tiles (visibility hidden, spot kept) unless editing.
+- Bus: `src/sdk/bus.ts` (`publish/subscribe/useTopic`), topics `weather:current`, `calendar:next`.
+- i18n: `src/sdk/i18n.ts`; host strings namespace `host`; plugins pass `translations` to `definePlugin`; locale from `layout.locale`.
+
 ## Catalog
 
 `server/catalog.ts` downloads one or more JSON indexes (`$host.catalogSources` in data/settings.json, default the

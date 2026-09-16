@@ -4,9 +4,11 @@ import {
   definePlugin,
   formatDuration,
   formatTime,
+  publish,
   useNow,
   usePluginEvent,
   usePluginQuery,
+  type CalendarNextTopic,
   type WidgetProps,
 } from '../../src/sdk/client';
 import manifest from './manifest';
@@ -124,6 +126,14 @@ function ScheduleWidget({ config, api, size, setAlert, editMode, openSettings, a
     // Recompute once a second is fine — the list is tiny.
   }, [events.data, nowMs, now]);
 
+  useEffect(() => {
+    const n = current ?? next;
+    if (!n) return;
+    const topic: CalendarNextTopic = { title: n.title, start: n.start, end: n.end, location: n.location, minutesUntil: Math.round((n.s - nowMs) / 60_000) };
+    publish('calendar:next', topic);
+    // Only republish when the event or its minute changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id, next?.id, Math.floor(nowMs / 60_000)]);
   const alertMs = (config.alertSeconds ?? 60) * 1000;
   const remaining = current ? current.e - nowMs : undefined;
   const inAlert = remaining !== undefined && remaining <= alertMs;

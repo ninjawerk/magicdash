@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Screen } from '@sdk';
+import { inWindow, type Screen } from '@sdk';
 import RGL, { type Layout } from 'react-grid-layout';
 import { useStore } from '../lib/store';
 import { WidgetShell } from './WidgetShell';
@@ -31,6 +31,14 @@ export function Dashboard() {
 
 function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
   const { layout, editMode, updateLayout, draggingRef } = useStore();
+  const [minute, setMinute] = useState(() => Math.floor(Date.now() / 60_000));
+  useEffect(() => {
+    const id = setInterval(() => setMinute(Math.floor(Date.now() / 60_000)), 15_000);
+    return () => clearInterval(id);
+  }, []);
+  // Tiles outside their schedule are hidden while viewing (they keep their spot); all show in edit mode.
+  const now = new Date(minute * 60_000);
+  const hidden = new Set(editMode ? [] : screen.widgets.filter((w) => !inWindow(w.schedule, now)).map((w) => w.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   // Incremented when a gesture is rejected so RGL re-syncs from the stored layout.
@@ -126,7 +134,7 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
           }}
         >
           {screen.widgets.map((w) => (
-            <div key={w.id}>
+            <div key={w.id} style={hidden.has(w.id) ? { visibility: 'hidden' } : undefined}>
               <WidgetShell widget={w} screenId={screen.id} />
             </div>
           ))}

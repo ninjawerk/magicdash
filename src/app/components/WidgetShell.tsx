@@ -27,7 +27,7 @@ class ErrorBoundary extends Component<{ children: ReactNode; resetKey: string },
 }
 
 export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; screenId: string }) {
-  const { editMode, layout, pluginSettings, apiFor, setDialog, removeWidget, attention: lock, requestAttention, releaseAttention } = useStore();
+  const { editMode, layout, pluginSettings, apiFor, setDialog, removeWidget, attention: lock, requestAttention, releaseAttention, notify } = useStore();
   const plugin = getClientPlugin(widget.pluginId);
   const ref = useRef<HTMLDivElement>(null);
   const [px, setPx] = useState({ width: 0, height: 0 });
@@ -88,6 +88,7 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
               setAlert={setAlert}
               setBackground={setBackground}
               attention={attention}
+              notify={notify}
             />
           </ErrorBoundary>
         ) : (
@@ -118,6 +119,7 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
           </div>
           <div className="pointer-events-none absolute bottom-2 left-3 text-[10px] font-mono text-white/40">
             {plugin?.manifest.name} · {widget.w}×{widget.h}
+            {widget.schedule && (widget.schedule.from || widget.schedule.days?.length) ? ` · ⏱ ${widget.schedule.from ?? ''}${widget.schedule.to ? `–${widget.schedule.to}` : ''}` : ''}
           </div>
         </div>
       )}

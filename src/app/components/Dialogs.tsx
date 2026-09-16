@@ -93,13 +93,26 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
   const plugin = widget ? getClientPlugin(widget.pluginId) : undefined;
   const [draft, setDraft] = useState<Record<string, unknown>>({ ...defaultsFor(plugin?.manifest.widgetConfig), ...(widget?.config ?? {}) });
   const [title, setTitle] = useState(widget?.title ?? '');
+  const [sched, setSched] = useState<Record<string, unknown>>({
+    mode: widget?.schedule?.from ? 'window' : 'always',
+    from: widget?.schedule?.from,
+    to: widget?.schedule?.to,
+    days: widget?.schedule?.days?.map(String) ?? [],
+  });
 
   if (!widget || !plugin) return null;
   const fields = plugin.manifest.widgetConfig ?? [];
   const hasGlobal = (plugin.manifest.settings?.length ?? 0) > 0;
 
   const save = () => {
-    updateWidget(widget.id, { config: draft, title: title.trim() || undefined });
+    const days = (sched.days as string[]).map(Number);
+    const schedule =
+      sched.mode === 'window' && sched.from && sched.to
+        ? { from: String(sched.from), to: String(sched.to), days: days.length ? days : undefined }
+        : days.length && days.length < 7
+          ? { days }
+          : undefined;
+    updateWidget(widget.id, { config: draft, title: title.trim() || undefined, schedule });
     onClose();
   };
 
@@ -130,10 +143,39 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
           <input className="input" placeholder={plugin.manifest.name} value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
         <SchemaForm fields={fields} value={draft} onChange={setDraft} api={apiFor(plugin.manifest.id)} customFields={plugin.customFields} />
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Visibility</h3>
+          <SchemaForm fields={SCHEDULE_FIELDS} value={sched} onChange={setSched} api={apiFor(plugin.manifest.id)} />
+        </div>
       </div>
     </Modal>
   );
 }
+
+const DAY_OPTIONS = [
+  { label: 'Mon', value: '1' },
+  { label: 'Tue', value: '2' },
+  { label: 'Wed', value: '3' },
+  { label: 'Thu', value: '4' },
+  { label: 'Fri', value: '5' },
+  { label: 'Sat', value: '6' },
+  { label: 'Sun', value: '0' },
+];
+const SCHEDULE_FIELDS: ConfigField[] = [
+  {
+    key: 'mode',
+    label: 'Show this',
+    type: 'select',
+    default: 'always',
+    options: [
+      { label: 'Always', value: 'always' },
+      { label: 'Only between two times', value: 'window' },
+    ],
+  },
+  { key: 'from', label: 'From', type: 'time', showWhen: { key: 'mode', equals: 'window' } },
+  { key: 'to', label: 'Until', type: 'time', showWhen: { key: 'mode', equals: 'window' }, help: 'May pass midnight, e.g. 22:00 → 06:00.' },
+  { key: 'days', label: 'Only on these days (empty = every day)', type: 'multiselect', options: DAY_OPTIONS },
+];
 
 // ---------------------------------------------------------------------------
 
@@ -243,6 +285,24 @@ function PresetCard({ preset, active, onPick }: { preset: (typeof THEME_PRESETS)
     </button>
   );
 }
+const LOCALE_FIELDS: ConfigField[] = [
+  {
+    key: 'locale',
+    label: 'Language & region',
+    type: 'select',
+    default: '',
+    options: [
+      { label: 'Browser default', value: '' },
+      { label: 'English (UK)', value: 'en-GB' },
+      { label: 'English (US)', value: 'en-US' },
+      { label: 'Deutsch', value: 'de' },
+      { label: 'Nederlands', value: 'nl' },
+      { label: 'Français', value: 'fr' },
+      { label: 'Español', value: 'es' },
+    ],
+    help: 'Used for dates and for plugins that ship translations (host strings: en, de, nl so far).',
+  },
+];
 const GRID_FIELDS: ConfigField[] = [
   { key: 'cols', label: 'Columns', type: 'number', min: 4, max: 48 },
   { key: 'rows', label: 'Rows', type: 'number', min: 2, max: 32, help: 'The grid always fills the screen; more rows = finer control.' },
@@ -255,6 +315,7 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
   const original = normalizeTheme(layout?.theme);
   const [theme, setTheme] = useState<Record<string, unknown>>({ ...original });
   const [grid, setGrid] = useState<Record<string, unknown>>({ ...(layout?.grid ?? {}) });
+  const [loc, setLoc] = useState<Record<string, unknown>>({ locale: layout?.locale ?? '' });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const api = apiFor('$host');
 
@@ -280,6 +341,7 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
       ...l,
       theme: normalizeTheme({ ...l.theme, ...(theme as unknown as DashboardLayout['theme']) }),
       grid: { ...l.grid, ...(grid as unknown as DashboardLayout['grid']) },
+      locale: (loc.locale as string) || undefined,
     }));
     onClose();
   };
@@ -325,6 +387,10 @@ export function ThemeDialog({ onClose }: { onClose: () => void }) {
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Grid</h3>
           <SchemaForm fields={GRID_FIELDS} value={grid} onChange={setGrid} api={api} />
+        </section>
+        <section>
+          <h3 className="text-sm font-semibold mb-3 text-white/70">Language</h3>
+          <SchemaForm fields={LOCALE_FIELDS} value={loc} onChange={setLoc} api={api} />
         </section>
       </div>
     </Modal>
@@ -923,6 +989,20 @@ export function ScreensDialog({ onClose }: { onClose: () => void }) {
                 </button>
                 <button className="btn btn-ghost p-1.5" disabled={i === layout.screens.length - 1} onClick={() => moveScreen(sc.id, 1)} title="Move down">
                   <ArrowDown size={14} />
+                </button>
+                <button
+                  className={`btn btn-ghost px-2 py-1.5 text-xs ${sc.schedule?.from ? 'text-[var(--accent)]' : ''}`}
+                  title="When this screen is in rotation"
+                  onClick={() => {
+                    const from = prompt('Include this screen from (HH:MM, empty = always)', sc.schedule?.from ?? '');
+                    if (from === null) return;
+                    if (!from.trim()) return updateLayout((l) => ({ ...l, screens: l.screens.map((x) => (x.id === sc.id ? { ...x, schedule: undefined } : x)) }));
+                    const to = prompt('…until (HH:MM)', sc.schedule?.to ?? '') ?? '';
+                    if (!/^\d{1,2}:\d{2}$/.test(from) || !/^\d{1,2}:\d{2}$/.test(to)) return alert('Use HH:MM');
+                    updateLayout((l) => ({ ...l, screens: l.screens.map((x) => (x.id === sc.id ? { ...x, schedule: { from, to } } : x)) }));
+                  }}
+                >
+                  {sc.schedule?.from ? `${sc.schedule.from}–${sc.schedule.to}` : '⏱ always'}
                 </button>
                 <button className="btn btn-ghost px-2 py-1.5 text-xs" onClick={() => showScreen(sc.id)} disabled={sc.id === activeScreenId}>
                   Show
