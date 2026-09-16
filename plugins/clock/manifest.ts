@@ -17,12 +17,24 @@ const manifest: PluginManifest = {
     { key: 'blink', label: 'Blink the colon every second', type: 'boolean', default: false },
     {
       key: 'align',
-      label: 'Alignment',
+      label: 'Horizontal alignment',
       type: 'select',
       default: 'center',
       options: [
-        { label: 'Center', value: 'center' },
         { label: 'Left', value: 'left' },
+        { label: 'Center', value: 'center' },
+        { label: 'Right', value: 'right' },
+      ],
+    },
+    {
+      key: 'valign',
+      label: 'Vertical position',
+      type: 'select',
+      default: 'middle',
+      options: [
+        { label: 'Top', value: 'top' },
+        { label: 'Middle', value: 'middle' },
+        { label: 'Bottom', value: 'bottom' },
       ],
     },
     { key: 'timeZone', label: 'Time zone', type: 'string', placeholder: 'e.g. Europe/London (leave empty for system)', help: 'IANA zone name.' },

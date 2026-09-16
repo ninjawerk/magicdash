@@ -6,7 +6,8 @@ interface Config {
   seconds?: boolean;
   date?: boolean;
   blink?: boolean;
-  align?: 'center' | 'left';
+  align?: 'left' | 'center' | 'right';
+  valign?: 'top' | 'middle' | 'bottom';
   timeZone?: string;
   label?: string;
 }
@@ -34,9 +35,12 @@ function ClockWidget({ config, size }: WidgetProps<Config>) {
   // Scale the type to the tile.
   const fontSize = Math.min(size.height * (config.date ? 0.5 : 0.7), size.width / (config.seconds ? 5.2 : 3.6));
 
-  const center = (config.align ?? 'center') === 'center';
+  const align = config.align ?? 'center';
+  const valign = config.valign ?? 'middle';
+  const alignCls = align === 'center' ? 'items-center text-center' : align === 'right' ? 'items-end text-right' : 'items-start text-left';
+  const valignCls = valign === 'top' ? 'justify-start pt-2' : valign === 'bottom' ? 'justify-end pb-5' : 'justify-center';
   return (
-    <div className={`flex h-full w-full flex-col justify-center px-6 ${center ? 'items-center text-center' : 'items-start'}`}>
+    <div className={`flex h-full w-full flex-col px-6 ${alignCls} ${valignCls}`}>
       {config.label && <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-1">{config.label}</div>}
       <div className="flex items-baseline gap-2 leading-none font-bold tracking-tight tabular" style={{ fontSize }}>
         <span>
