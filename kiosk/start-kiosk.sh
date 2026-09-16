@@ -8,12 +8,15 @@ mkdir -p "$(dirname "$LOG")" "$PROFILE"
 exec >>"$LOG" 2>&1
 echo "[$(date -Is)] kiosk starting → $URL (WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-} DISPLAY=${DISPLAY:-})"
 
-# Wait for the server (it may still be starting after boot). Give up waiting after 2 min and open anyway;
-# the page retries on its own until the API answers.
-for _ in $(seq 1 120); do
+# Wait briefly for the server. If it isn't up yet (first boot of the flashed image is still installing),
+# open the local waiting page instead — it polls the server and jumps to the dashboard when it answers.
+HERE=$(cd "$(dirname "$0")" && pwd)
+OPEN_URL="$URL"
+for _ in $(seq 1 15); do
   curl -fs "$URL/api/health" >/dev/null 2>&1 && break
   sleep 1
 done
+curl -fs "$URL/api/health" >/dev/null 2>&1 || OPEN_URL="file://$HERE/waiting.html?url=$URL&host=$(hostname)"
 
 # X11 only: never blank the screen, hide the idle cursor. (Wayland blanking is handled by raspi-config.)
 if [ -n "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
@@ -38,7 +41,8 @@ while true; do
   # Chromium remembers a crash and shows a restore bar; clear that flag before each launch.
   sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"[^"]*"/"exit_type":"Normal"/' \
     "$PROFILE/Default/Preferences" 2>/dev/null || true
-  "$BROWSER" "${FLAGS[@]}" "$URL"
+  "$BROWSER" "${FLAGS[@]}" "$OPEN_URL"
+  OPEN_URL="$URL"
   echo "[$(date -Is)] chromium exited ($?) — restarting in 3s"
   sleep 3
 done

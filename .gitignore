@@ -7,3 +7,4 @@ data/
 .DS_Store
 .claude/
 *.zip
+image/out/

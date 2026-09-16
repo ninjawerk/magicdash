@@ -15,6 +15,7 @@ PORT="${MAGICDASH_PORT:-3210}"
 
 step() { printf '\n\033[1;34m▸ %s\033[0m\n' "$*"; }
 
+export DEBIAN_FRONTEND=noninteractive
 step "Installing packages"
 sudo apt-get update -qq
 sudo apt-get install -y -qq curl git unclutter avahi-daemon >/dev/null
@@ -28,7 +29,7 @@ fi
 echo "  Node $(node -v)"
 
 step "Installing dependencies & building"
-npm ci --no-audit --no-fund
+[ -f package-lock.json ] && npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 npm run build
 
 step "Installing systemd service (starts on boot)"

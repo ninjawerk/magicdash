@@ -39,9 +39,49 @@ npm run dev
 
 Open <http://localhost:5173>. The API server runs on port 3210; Vite proxies `/api` to it.
 
-## Install on a Raspberry Pi
+## Option A: flash a ready-made image
 
-Raspberry Pi OS Desktop (Bookworm or newer) with auto-login enabled. Then:
+Download the latest `magicdash-*-raspios-arm64.img.xz` from the project's Releases page and flash it with
+[Raspberry Pi Imager](https://www.raspberrypi.com/software/) (*Choose OS → Use custom*) or `dd`. Boot the Pi
+with an ethernet cable or a pre-baked Wi-Fi (see below).
+
+- First boot shows a **"Setting up MagicDash"** screen while it installs Chromium and Node and builds the app —
+  about 10 minutes with internet — then the Pi reboots straight into the full-screen dashboard.
+- Login is `magicdash` / `magicdash`, hostname `magicdash`, SSH on. Change the password after first login (`passwd`).
+- Edit from your laptop at `http://magicdash.local:3210`.
+
+The image is the official Raspberry Pi OS (64-bit, Desktop) with MagicDash in `/opt/magicdash` and a one-shot
+first-boot service. Works on Pi 3, 4, 5 and Zero 2 W (slow build).
+
+### Building the image yourself
+
+On Linux (needs root for loop mounts):
+
+```bash
+sudo bash image/build-image.sh
+```
+
+On macOS or Windows with Docker Desktop:
+
+```bash
+bash image/build-in-docker.sh
+```
+
+Options are environment variables, e.g. bake in your Wi-Fi and locale:
+
+```bash
+WIFI_SSID="Home" WIFI_PSK="secret" WIFI_COUNTRY=GB MD_TIMEZONE=Europe/London MD_KEYMAP=gb MD_PASSWORD=changeme sudo -E bash image/build-image.sh
+```
+
+Output lands in `image/out/` as `.img.xz` plus a `.sha256`. The GitHub Actions workflow in
+`.github/workflows/build-image.yml` builds the image on every `v*` tag and attaches it to the release, and can be run
+manually with a Wi-Fi SSID (put the passphrase in a `WIFI_PSK` repository secret). `image/os_list.json` is a
+Raspberry Pi Imager repository file: host it and users can pick MagicDash inside Imager
+(`rpi-imager --repo <url>`), after replacing `OWNER/REPO` and the version.
+
+## Option B: install on an existing Raspberry Pi OS
+
+Raspberry Pi OS Desktop (Bookworm or newer). Then:
 
 ```bash
 git clone <this repo> ~/magicdash
@@ -172,7 +212,8 @@ server/        Express API: layout & settings storage, SSE event bus, plugin loa
 src/sdk/       Plugin SDK (types, client hooks, server context) — import from '@sdk/client' / '@sdk/server'
 src/app/       Host UI: grid, tile chrome, auto-generated settings forms, toolbar
 plugins/*/     One folder per plugin: manifest.ts, client.tsx, optional server.ts
-kiosk/         Pi install script, systemd unit, Chromium kiosk launcher
+kiosk/         Pi install script, systemd unit, Chromium kiosk launcher, first-boot waiting page
+image/         Flashable Raspberry Pi OS image builder + first-boot provisioner + Imager repo file
 data/          Runtime state (layout.json, settings.json, plugin data) — git-ignored
 ```
 

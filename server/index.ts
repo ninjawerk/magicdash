@@ -46,6 +46,7 @@ async function main() {
 
   // --- Core API ---------------------------------------------------------------
   app.get('/api/health', (_req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*'); // the kiosk waiting page polls this from file://
     res.json({
       ok: true,
       clients: clientCount(),

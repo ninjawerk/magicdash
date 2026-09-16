@@ -1,0 +1,14 @@
+{
+  "_comment": "Raspberry Pi Imager repository. Host this file (e.g. GitHub Pages or the repo's raw URL) and open Imager with:  rpi-imager --repo https://<your-host>/os_list.json   Replace OWNER/REPO and the version.",
+  "os_list": [
+    {
+      "name": "MagicDash",
+      "description": "Kiosk dashboard: schedule, weather, Home Assistant and more. Based on Raspberry Pi OS 64-bit. Login magicdash/magicdash.",
+      "icon": "https://raw.githubusercontent.com/OWNER/REPO/main/image/icon.png",
+      "url": "https://github.com/OWNER/REPO/releases/download/v0.1.0/magicdash-0.1.0-raspios-arm64.img.xz",
+      "release_date": "2026-09-16",
+      "devices": ["pi5-64bit", "pi4-64bit", "pi3-64bit"],
+      "init_format": "none"
+    }
+  ]
+}

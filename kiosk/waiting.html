@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>MagicDash</title>
+<style>
+html,body{height:100%;margin:0;background:radial-gradient(1200px 800px at 15% 10%,#16213a 0%,#0b0f17 55%,#070a10 100%);color:#e7ebf3;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;cursor:none}
+.card{text-align:center;max-width:560px;padding:32px}
+h1{font-size:40px;margin:0 0 8px;letter-spacing:-.02em}
+p{color:rgba(231,235,243,.6);font-size:18px;line-height:1.5;margin:8px 0}
+.spin{width:44px;height:44px;border-radius:50%;border:4px solid rgba(255,255,255,.12);border-top-color:#7c9cff;animation:s 1s linear infinite;margin:0 auto 24px}
+@keyframes s{to{transform:rotate(360deg)}}
+small{display:block;margin-top:28px;color:rgba(231,235,243,.35);font-size:13px}
+#t{font-variant-numeric:tabular-nums}
+</style></head><body>
+<div class="card">
+  <div class="spin"></div>
+  <h1>Setting up MagicDash</h1>
+  <p id="msg">Waiting for the dashboard server to start…</p>
+  <p id="first" hidden>First boot installs Chromium and Node and builds the app. This takes about 10 minutes and needs internet. The Pi restarts when it’s done.</p>
+  <small>Elapsed <span id="t">0:00</span> · from a laptop: http://<span id="host">magicdash</span>.local:3210</small>
+</div>
+<script>
+const q=new URLSearchParams(location.search);const url=q.get('url')||'http://localhost:3210';
+document.getElementById('host').textContent=q.get('host')||'magicdash';
+const start=Date.now();
+setInterval(()=>{const s=Math.floor((Date.now()-start)/1000);document.getElementById('t').textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;if(s>20)document.getElementById('first').hidden=false;},1000);
+(async function poll(){try{const r=await fetch(url+'/api/health',{cache:'no-store'});if(r.ok){location.replace(url);return}}catch{}setTimeout(poll,2000)})();
+</script></body></html>

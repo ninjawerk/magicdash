@@ -1,0 +1,52 @@
+name: Build Raspberry Pi image
+
+on:
+  workflow_dispatch:
+    inputs:
+      wifi_ssid:
+        description: Optional Wi-Fi SSID to bake in
+        required: false
+      wifi_country:
+        description: 2-letter Wi-Fi country code
+        required: false
+        default: ''
+  push:
+    tags: ['v*']
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xz-utils e2fsprogs parted fdisk
+      - name: Cache base image
+        uses: actions/cache@v4
+        with:
+          path: image/out/cache
+          key: raspios-${{ hashFiles('image/build-image.sh') }}
+      - name: Build image
+        env:
+          WIFI_SSID: ${{ inputs.wifi_ssid }}
+          WIFI_PSK: ${{ secrets.WIFI_PSK }}
+          WIFI_COUNTRY: ${{ inputs.wifi_country }}
+        run: sudo -E bash image/build-image.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: magicdash-image
+          path: |
+            image/out/*.img.xz
+            image/out/*.sha256
+          retention-days: 14
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            image/out/*.img.xz
+            image/out/*.sha256
