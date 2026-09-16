@@ -124,13 +124,23 @@ bus. The latest payload per topic is kept, so late subscribers get it at once. B
 (`WeatherCurrentTopic`) and `calendar:next` (`CalendarNextTopic`). Name yours `<plugin-id>:<thing>`. The greeting mode of the
 quotes plugin is the reference consumer.
 
-### Translations
+### Language and translations
+
+The selected language (Admin → Settings → Language, or Appearance → Language) reaches plugins three ways:
+
+- `props.locale` — a BCP-47 tag such as `en-GB` or `de`; pass it to `Intl.DateTimeFormat` / `Intl.NumberFormat`.
+- `useLocale()` — the same value as a hook that re-renders when the user changes it; `getLocale()` outside React.
+- `formatTime()` / `formatDate()` from the SDK already use it.
+
+Ship strings with `translations` and read them with `useT`:
 
 ```ts
-export default definePlugin({ manifest, Widget, translations: { en: { 'hello': 'Hello, {name}' }, de: { 'hello': 'Hallo, {name}' } } });
+export default definePlugin({ manifest, Widget, translations: { en: { hello: 'Hello, {name}' }, de: { hello: 'Hallo, {name}' } } });
 const t = useT(manifest.id);  t('hello', { name })
 ```
-The locale comes from Appearance → Language (fallback: browser). Missing keys fall back to English, then the key.
+Lookup order: exact locale (`de-AT`) → language (`de`) → English → the key itself, so partial translations are fine.
+Keep the English strings plain — many users read transliterated terms with difficulty; the Rahu Kaala tile says
+"Rahu period — avoid starting new things" rather than assuming the reader knows the Sanskrit names.
 
 ### Screens and the attention lock
 

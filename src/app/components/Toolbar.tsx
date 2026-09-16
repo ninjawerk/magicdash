@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Check, DatabaseBackup, Layers, LayoutGrid, MonitorSmartphone, PackagePlus, Palette, Pencil, Pin, Plus, Puzzle, Shield } from 'lucide-react';
 import { hostApi } from '../lib/api';
+import { useT } from '@sdk/i18n';
 import { listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
 
@@ -11,6 +12,7 @@ import { useStore } from '../lib/store';
  */
 export function Toolbar() {
   const { editMode, setEditMode, setDialog, dialog, layout, activeScreenId, showScreen, attention, auth } = useStore();
+  const t = useT('host');
   /** Entering edit mode requires the admin password; the kiosk view itself stays open. */
   const enterEdit = () => {
     if (auth.authenticated) setEditMode(true);
@@ -109,19 +111,19 @@ export function Toolbar() {
       {editMode ? (
         <>
           <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'add' })} title="Add widget">
-            <Plus size={16} /> Add
+            <Plus size={16} /> {t('toolbar.add')}
           </button>
           {screens.length <= 1 && (
             <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'screens' })} title="Screens & rotation">
-              <Layers size={16} /> Screens
+              <Layers size={16} /> {t('toolbar.screens')}
             </button>
           )}
           <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'theme' })} title="Appearance & grid">
-            <Palette size={16} /> Theme
+            <Palette size={16} /> {t('toolbar.theme')}
           </button>
           <div className="relative">
             <button className="btn btn-ghost" onClick={() => setPluginsOpen((o) => !o)} title="Plugin settings">
-              <Puzzle size={16} /> Plugins
+              <Puzzle size={16} /> {t('toolbar.plugins')}
             </button>
             {pluginsOpen && (
               <div className="absolute bottom-full right-0 mb-2 w-60 surface rounded-xl border border-white/10 p-1 shadow-2xl" onMouseLeave={() => setPluginsOpen(false)}>
@@ -151,7 +153,7 @@ export function Toolbar() {
           </div>
           <div className="relative">
             <button className="btn btn-ghost" onClick={() => setRemoteOpen((o) => !o)} title="Edit from another device">
-              <MonitorSmartphone size={16} /> Remote
+              <MonitorSmartphone size={16} /> {t('toolbar.remote')}
             </button>
             {remoteOpen && (
               <div className="surface absolute bottom-full right-0 mb-2 w-80 rounded-xl border border-white/10 p-4 shadow-2xl text-sm" onMouseLeave={() => setRemoteOpen(false)}>
@@ -169,21 +171,21 @@ export function Toolbar() {
             )}
           </div>
           <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'backup' })} title="Export / import">
-            <DatabaseBackup size={16} /> Backup
+            <DatabaseBackup size={16} /> {t('toolbar.backup')}
           </button>
           <button className="btn btn-primary" onClick={() => setEditMode(false)} title="Done (Esc)">
-            <Check size={16} /> Done
+            <Check size={16} /> {t('toolbar.done')}
           </button>
         </>
       ) : (
         <>
           <button className="btn btn-ghost" onClick={enterEdit} title="Edit layout (E)">
             <Pencil size={16} />
-            <span className="hidden sm:inline">Edit</span>
+            <span className="hidden sm:inline">{t('toolbar.edit')}</span>
           </button>
           <a className="btn btn-ghost" href="/admin" title="Admin panel">
             <Shield size={16} />
-            <span className="hidden sm:inline">Admin</span>
+            <span className="hidden sm:inline">{t('toolbar.admin')}</span>
           </a>
         </>
       )}

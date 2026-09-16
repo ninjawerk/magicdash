@@ -9,8 +9,8 @@ import type { DashboardContext, PluginEvent, PluginManifest, SelectOption } from
 
 export * from './types';
 export * from './bus';
-export { useT, translate, getLocale, type Translations } from './i18n';
-import { registerTranslations, type Translations as _Translations } from './i18n';
+export { useT, useLocale, translate, getLocale, type Translations } from './i18n';
+import { getLocale as _getLocale, registerTranslations, type Translations as _Translations } from './i18n';
 
 /** Props every widget receives from the host. */
 export interface WidgetProps<C = Record<string, unknown>> {
@@ -22,6 +22,8 @@ export interface WidgetProps<C = Record<string, unknown>> {
   settings: Record<string, unknown>;
   /** Dashboard-wide facts (location, name, units) — use as defaults, let the tile override. */
   context: DashboardContext;
+  /** Selected language (BCP-47, e.g. "en-GB", "de"). Also `useLocale()` / `getLocale()`. */
+  locale: string;
   /** Current tile size in grid units and pixels. */
   size: { w: number; h: number; width: number; height: number };
   /** True while the user is arranging the dashboard. */
@@ -311,9 +313,23 @@ export function formatDuration(ms: number, opts: { seconds?: boolean } = {}): st
   return neg ? `-${out}` : out;
 }
 
-export function formatTime(d: Date | string | number, opts: { hour12?: boolean } = {}): string {
+export function formatTime(d: Date | string | number, opts: { hour12?: boolean; timeZone?: string } = {}): string {
   const date = d instanceof Date ? d : new Date(d);
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: opts.hour12 });
+  try {
+    return new Intl.DateTimeFormat(_getLocale(), { hour: 'numeric', minute: '2-digit', hour12: opts.hour12, timeZone: opts.timeZone }).format(date);
+  } catch {
+    return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: opts.hour12 });
+  }
+}
+
+/** Locale-aware date formatting (selected language). */
+export function formatDate(d: Date | string | number, opts: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' }): string {
+  const date = d instanceof Date ? d : new Date(d);
+  try {
+    return new Intl.DateTimeFormat(_getLocale(), opts).format(date);
+  } catch {
+    return date.toLocaleDateString([], opts);
+  }
 }
 
 export function classNames(...parts: Array<string | false | null | undefined>): string {

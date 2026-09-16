@@ -194,8 +194,10 @@ curl -X POST http://<pi>:3210/api/display -H 'Authorization: Bearer md_…' -H '
 **Schedules**: tile settings → *Visibility* (between two times, weekdays); Screens → the ⏱ button per screen sets its
 rotation window. Hidden tiles keep their spot; scheduled-out screens are skipped.
 
-**Language**: Appearance → Language sets the locale for dates and translated strings (host strings and the greeting ship in
-English, German and Dutch; plugins can add their own via `translations` in `definePlugin`).
+**Language**: Admin → Settings → Language (also under Appearance) sets the locale for dates, times, the kiosk toolbar and every
+plugin that ships translations. Host strings come in English, German, Dutch, French and Spanish; the greeting in English,
+German and Dutch; Rahu Kaala in English, Tamil, Sinhala and Hindi. Plugins read the language via `props.locale` /
+`useLocale()` and add their own strings with `translations`.
 
 ## Themes & grid
 

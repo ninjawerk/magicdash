@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Download, ExternalLink, FolderOpen, Loader2, PackagePlus, Plus, RefreshCw, Search, Settings2, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { subscribeEvents } from '@sdk/client';
+import { useT } from '@sdk/i18n';
 import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
 import { hostApi } from '../lib/api';
 import { getClientPlugin, listClientPlugins } from '../lib/registry';
@@ -287,7 +288,7 @@ function PresetCard({ preset, active, onPick }: { preset: (typeof THEME_PRESETS)
     </button>
   );
 }
-const LOCALE_FIELDS: ConfigField[] = [
+export const LOCALE_FIELDS: ConfigField[] = [
   {
     key: 'locale',
     label: 'Language & region',
@@ -301,8 +302,11 @@ const LOCALE_FIELDS: ConfigField[] = [
       { label: 'Nederlands', value: 'nl' },
       { label: 'Français', value: 'fr' },
       { label: 'Español', value: 'es' },
+      { label: 'தமிழ் (Tamil)', value: 'ta' },
+      { label: 'සිංහල (Sinhala)', value: 'si' },
+      { label: 'हिन्दी (Hindi)', value: 'hi' },
     ],
-    help: 'Used for dates and for plugins that ship translations (host strings: en, de, nl so far).',
+    help: 'Dates, times and every translated string follow this. Host strings ship in English, German, Dutch, French and Spanish; plugins bring their own.',
   },
 ];
 const GRID_FIELDS: ConfigField[] = [
@@ -1075,6 +1079,7 @@ export function ScreensDialog({ onClose }: { onClose: () => void }) {
 /** Sign-in prompt used by the kiosk when entering edit mode. */
 export function LoginDialog({ onClose }: { onClose: () => void }) {
   const { auth, login, setEditMode } = useStore();
+  const t = useT('host');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -1098,17 +1103,17 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <Modal title="Sign in to edit" subtitle={auth.configured ? 'Enter the admin password.' : 'No admin password is set yet.'} onClose={onClose} width={420}>
+    <Modal title={t('login.title')} subtitle={auth.configured ? t('login.subtitle') : 'No admin password is set yet.'} onClose={onClose} width={420}>
       {auth.configured ? (
         <form onSubmit={submit} className="space-y-4">
           <input className="input" type="password" autoFocus placeholder="Admin password" value={pw} onChange={(e) => setPw(e.target.value)} />
           {err && <p className="text-xs text-red-300">{err}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" className="btn btn-default" onClick={onClose}>
-              Cancel
+              {t('login.cancel')}
             </button>
             <button type="submit" className="btn btn-primary" disabled={busy || !pw}>
-              {busy && <Loader2 className="animate-spin" size={14} />} Sign in
+              {busy && <Loader2 className="animate-spin" size={14} />} {t('login.button')}
             </button>
           </div>
           <p className="text-xs text-white/40">
