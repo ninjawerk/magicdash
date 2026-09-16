@@ -46,7 +46,7 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 | 📰 **News headlines** | Any RSS/Atom feeds — rotating big headline with the article image as background, or a list. |
 | 📖 **Word of the day** | Merriam-Webster or Wiktionary, with pronunciation and definition. |
 | 🔳 **QR code** | Guest Wi-Fi login, a link or any text as a scannable code. |
-| 🪐 **Rahu Kaala** | Today’s Rahu Kaala (plus Yamagandam, Gulika) from local sunrise/sunset, live countdown, red while running. Offline. |
+| 🪐 **Rahu Kaala** | Today’s Rahu Kaala and the auspicious Abhijit Muhurta (plus Yamagandam, Gulika) from local sunrise/sunset, live countdown, red while running. Offline. |
 
 ## Quick start (development)
 

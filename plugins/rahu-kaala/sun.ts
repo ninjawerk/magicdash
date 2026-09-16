@@ -33,9 +33,11 @@ const SEGMENT: Record<'rahu' | 'yamagandam' | 'gulika', number[]> = {
 };
 
 export interface Period {
-  key: 'rahu' | 'yamagandam' | 'gulika';
+  key: 'rahu' | 'yamagandam' | 'gulika' | 'abhijit';
   start: Date;
   end: Date;
+  /** true = auspicious window */
+  good?: boolean;
 }
 
 export function vedicPeriods(date: Date, lat: number, lon: number): { sunrise: Date; sunset: Date; periods: Period[] } | null {
@@ -43,9 +45,13 @@ export function vedicPeriods(date: Date, lat: number, lon: number): { sunrise: D
   if (!sun) return null;
   const part = (sun.sunset.getTime() - sun.sunrise.getTime()) / 8;
   const day = date.getDay();
-  const periods = (Object.keys(SEGMENT) as Period['key'][]).map((key) => {
+  const periods: Period[] = (Object.keys(SEGMENT) as Array<keyof typeof SEGMENT>).map((key) => {
     const seg = SEGMENT[key][day];
     return { key, start: new Date(sun.sunrise.getTime() + (seg - 1) * part), end: new Date(sun.sunrise.getTime() + seg * part) };
   });
+  // Abhijit Muhurta: the 8th of 15 equal daylight muhurtas — the auspicious window around local solar noon.
+  // (Traditionally not observed on Wednesdays; we still show it, flagged, so the tile can say so.)
+  const muhurta = (sun.sunset.getTime() - sun.sunrise.getTime()) / 15;
+  periods.push({ key: 'abhijit', start: new Date(sun.sunrise.getTime() + 7 * muhurta), end: new Date(sun.sunrise.getTime() + 8 * muhurta), good: true });
   return { ...sun, periods };
 }

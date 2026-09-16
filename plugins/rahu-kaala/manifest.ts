@@ -3,7 +3,7 @@ import type { PluginManifest } from '../../src/sdk/types';
 const manifest: PluginManifest = {
   id: 'rahu-kaala',
   name: 'Rahu Kaala',
-  description: 'Today’s Rahu Kaala (and optionally Yamagandam and Gulika Kalam) from local sunrise and sunset, with a live countdown. Works offline.',
+  description: 'Today’s Rahu Kaala, the auspicious Abhijit Muhurta, and optionally Yamagandam and Gulika Kalam — from local sunrise and sunset, with a live countdown. Works offline.',
   version: '1.0.0',
   sdkVersion: 1,
   minHost: '0.2.0',
@@ -13,6 +13,7 @@ const manifest: PluginManifest = {
   minSize: { w: 2, h: 1 },
   widgetConfig: [
     { key: 'location', label: 'Location', type: 'custom', help: 'Leave empty to use the dashboard location (Appearance → Dashboard).' },
+    { key: 'showAbhijit', label: 'Show the best time window (Abhijit Muhurta)', type: 'boolean', default: true },
     { key: 'showYamagandam', label: 'Also show Yamagandam', type: 'boolean', default: false },
     { key: 'showGulika', label: 'Also show Gulika Kalam', type: 'boolean', default: false },
     { key: 'showSun', label: 'Show sunrise & sunset', type: 'boolean', default: true },
