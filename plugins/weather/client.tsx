@@ -145,7 +145,7 @@ function glowColor(code: number, isDay: boolean): string {
 // ---------------------------------------------------------------------------
 // Widget
 // ---------------------------------------------------------------------------
-function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProps<Config>) {
+function WeatherWidget({ config, api, size, openSettings, editMode, setBackground }: WidgetProps<Config>) {
   const loc = config.location;
   const units = config.units ?? 'metric';
   const fc = usePluginQuery<Forecast>(api, '/forecast', {
@@ -153,6 +153,19 @@ function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProp
     query: loc ? { lat: loc.lat, lon: loc.lon, units, name: loc.name } : undefined,
     refreshMs: 10 * 60_000,
   });
+
+  const cur0 = fc.data?.current;
+  useEffect(() => {
+    if (!cur0) {
+      setBackground(undefined);
+      return;
+    }
+    const glowSize = Math.max(160, size.width * 0.5);
+    setBackground(
+      `radial-gradient(${glowSize}px ${glowSize}px at 12% 8%, ${glowColor(cur0.code, cur0.isDay)} 0%, transparent 70%), ${conditionGradient(cur0.code, cur0.isDay)}`,
+    );
+    return () => setBackground(undefined);
+  }, [cur0?.code, cur0?.isDay, size.width, setBackground]);
 
   if (!loc) {
     return (
@@ -198,13 +211,6 @@ function WeatherWidget({ config, api, size, openSettings, editMode }: WidgetProp
 
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden">
-      {/* Condition wash + glow */}
-      <div className="pointer-events-none absolute inset-0" style={{ background: conditionGradient(cur.code, cur.isDay) }} />
-      <div
-        className="pointer-events-none absolute -left-10 -top-16 rounded-full blur-3xl"
-        style={{ width: Math.max(160, W * 0.5), height: Math.max(160, W * 0.5), background: glowColor(cur.code, cur.isDay), opacity: 0.8 }}
-      />
-
       <div className="relative flex h-full flex-col gap-2 px-5 pb-4 pt-1">
         {/* Current */}
         <div className="flex items-center gap-4" style={{ minHeight: headerH - 12 }}>

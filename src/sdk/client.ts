@@ -30,6 +30,11 @@ export interface WidgetProps<C = Record<string, unknown>> {
    * Call with `false` to clear. Idempotent — safe to call every render.
    */
   setAlert: (on: boolean) => void;
+  /**
+   * Paint the whole tile — title bar included — with a CSS background (gradient, colour, image).
+   * Pass `undefined` to clear. Keep it translucent so it works on every theme.
+   */
+  setBackground: (css: string | undefined) => void;
 }
 
 export interface PluginApi {

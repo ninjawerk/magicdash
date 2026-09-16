@@ -32,6 +32,7 @@ export function WidgetShell({ widget }: { widget: WidgetInstance }) {
   const ref = useRef<HTMLDivElement>(null);
   const [px, setPx] = useState({ width: 0, height: 0 });
   const [alert, setAlert] = useState(false);
+  const [background, setBackground] = useState<string>();
   const openSettings = useCallback(() => setDialog({ kind: 'widget', widgetId: widget.id }), [setDialog, widget.id]);
 
   useEffect(() => {
@@ -52,8 +53,9 @@ export function WidgetShell({ widget }: { widget: WidgetInstance }) {
 
   return (
     <div className={`tile h-full w-full ${editMode ? 'editing' : ''} ${alert ? 'alert' : ''}`} data-widget-id={widget.id}>
+      {background && <div className="pointer-events-none absolute inset-0" style={{ background }} />}
       {showTitle && (
-        <div className="flex items-center justify-between px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <div className="relative flex items-center justify-between px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
           <span className="truncate">{title}</span>
         </div>
       )}
@@ -69,6 +71,7 @@ export function WidgetShell({ widget }: { widget: WidgetInstance }) {
               api={apiFor(widget.pluginId)}
               openSettings={openSettings}
               setAlert={setAlert}
+              setBackground={setBackground}
             />
           </ErrorBoundary>
         ) : (

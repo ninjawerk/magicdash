@@ -111,6 +111,7 @@ export default definePlugin<Config>({ manifest, Widget });
 | `api` | `api.get(path, query)`, `api.post(path, body)`, `api.url(path)` — bound to your router |
 | `openSettings()` | Open this tile's settings dialog |
 | `setAlert(bool)` | Turn the tile red & pulsing (the schedule uses it for the final minute) |
+| `setBackground(css)` | Paint the whole tile, title bar included, with a CSS background (the weather tile tints itself by conditions). Keep it translucent. |
 | `instanceId` | Stable id of the tile |
 
 ### Hooks (from `src/sdk/client`)
