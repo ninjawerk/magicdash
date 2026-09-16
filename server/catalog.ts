@@ -59,7 +59,9 @@ async function fetchIndex(url: string, force = false): Promise<{ index: CatalogI
   const hit = cache.get(url);
   if (hit && !force && Date.now() - hit.at < TTL) return hit;
   try {
-    const r = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, cache: 'no-store' });
+    // raw.githubusercontent.com caches for ~5 min; a cache-buster on forced refreshes gets the newest copy.
+    const target = force ? `${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}` : url;
+    const r = await fetch(target, { headers: { 'user-agent': UA, accept: 'application/json' }, cache: 'no-store' });
     if (!r.ok) throw new Error(`${new URL(url).hostname} responded ${r.status}`);
     const raw = (await r.json()) as CatalogIndex | CatalogEntry[];
     const index: CatalogIndex = Array.isArray(raw) ? { plugins: raw } : raw;
@@ -125,7 +127,8 @@ function compareVersions(a: string, b: string) {
 }
 
 export async function installFromCatalog(id: string, replace: boolean) {
-  const { items } = await loadCatalog();
+  // Always re-fetch the indexes before installing so a freshly corrected entry is used, not a cached one.
+  const { items } = await loadCatalog(true);
   const item = items.find((i) => i.id === id);
   if (!item) throw new Error(`"${id}" is not in any configured catalog.`);
   if (item.bundled) throw new Error(`"${id}" is bundled with MagicDash.`);
@@ -135,7 +138,13 @@ export async function installFromCatalog(id: string, replace: boolean) {
   if (!r.ok) throw new Error(`Download failed (${r.status}) from ${new URL(item.download).hostname}`);
   const buf = Buffer.from(await r.arrayBuffer());
   const sha = createHash('sha256').update(buf).digest('hex');
-  if (sha !== item.sha256.toLowerCase()) throw new Error(`Checksum mismatch for ${item.name}: the download does not match what the catalog pinned. Not installed.`);
+  if (sha !== item.sha256.toLowerCase()) {
+    throw new Error(
+      `Checksum mismatch for ${item.name} v${item.version} — not installed. The file at ${new URL(item.download).hostname} has changed since the catalog pinned it ` +
+        `(expected ${item.sha256.slice(0, 12)}…, got ${sha.slice(0, 12)}…). This usually means the author replaced the release asset; ` +
+        `the catalog entry needs re-pinning. Report it at https://github.com/${item.repo}/issues or the catalog repo.`,
+    );
+  }
   const files = filesFromZip(buf);
   const manifestFile = files.find((f) => f.path === 'manifest.ts' || f.path.endsWith('/manifest.ts'));
   const fields = manifestFile ? readManifestFields(manifestFile.content) : {};
