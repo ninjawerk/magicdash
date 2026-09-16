@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches: ['**']
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Smoke-test server + MCP
+        run: |
+          (NODE_ENV=production MAGICDASH_PORT=3210 npx tsx server/index.ts > server.log 2>&1 &)
+          for i in $(seq 1 30); do curl -fs localhost:3210/api/health && break; sleep 1; done
+          curl -fs localhost:3210/api/layout | head -c 200
+          npx tsx scripts/mcp-smoke.ts

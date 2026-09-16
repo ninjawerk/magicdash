@@ -117,6 +117,38 @@ async function main() {
 
   app.get('/api/events', (_req, res) => addSseClient(res));
 
+  // --- Host controls (used by the MCP server and by automations, e.g. a Home Assistant curl) --------
+  /** POST /api/screens/show { screenId } — switch every connected dashboard to a screen (no lock). */
+  app.post('/api/screens/show', (req, res) => {
+    const { screenId } = (req.body ?? {}) as { screenId?: string };
+    const screen = layoutStore.get().screens.find((s) => s.id === screenId || s.name.toLowerCase() === String(screenId).toLowerCase());
+    if (!screen) {
+      res.status(404).json({ error: 'No such screen' });
+      return;
+    }
+    broadcast({ plugin: '$host', event: 'showScreen', payload: { screenId: screen.id } });
+    res.json({ ok: true, screenId: screen.id });
+  });
+
+  /**
+   * POST /api/attention { action: 'request' | 'release', screenId?, holder?, reason? }
+   * Same lock rules as plugins: one holder, 120 s max. `holder` defaults to "api".
+   */
+  app.post('/api/attention', (req, res) => {
+    const { action = 'request', screenId, holder = 'api', reason } = (req.body ?? {}) as { action?: string; screenId?: string; holder?: string; reason?: string };
+    if (action === 'request') {
+      const screen = layoutStore.get().screens.find((s) => s.id === screenId || s.name.toLowerCase() === String(screenId).toLowerCase());
+      if (!screen) {
+        res.status(404).json({ error: 'No such screen' });
+        return;
+      }
+      broadcast({ plugin: '$host', event: 'attention', payload: { action, screenId: screen.id, holder: `api:${holder}`, reason } });
+    } else {
+      broadcast({ plugin: '$host', event: 'attention', payload: { action: 'release', holder: `api:${holder}` } });
+    }
+    res.json({ ok: true, note: 'Delivered to connected dashboards; each enforces the lock locally.' });
+  });
+
   // --- Backup / restore ---------------------------------------------------------
   /** GET /api/export?secrets=1 → downloadable JSON backup. */
   app.get('/api/export', async (req, res) => {

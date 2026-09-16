@@ -12,9 +12,12 @@
     "start": "NODE_ENV=production tsx server/index.ts",
     "typecheck": "tsc --noEmit",
     "new-plugin": "tsx scripts/new-plugin.ts",
-    "pack-plugin": "tsx scripts/pack-plugin.ts"
+    "pack-plugin": "tsx scripts/pack-plugin.ts",
+    "mcp": "tsx mcp/server.ts",
+    "mcp:test": "tsx scripts/mcp-smoke.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "adm-zip": "^0.6.1",
     "express": "^4.21.2",
     "fast-xml-parser": "^5.11.1",
@@ -24,7 +27,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^1.5.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
@@ -42,5 +46,11 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vite": "^6.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ninjawerk/magicdash.git"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/ninjawerk/magicdash#readme"
 }

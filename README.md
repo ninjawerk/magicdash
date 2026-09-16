@@ -90,7 +90,7 @@ Raspberry Pi Imager repository file: host it and users can pick MagicDash inside
 Raspberry Pi OS Desktop (Bookworm or newer). Then:
 
 ```bash
-git clone <this repo> ~/magicdash
+git clone https://github.com/ninjawerk/magicdash.git ~/magicdash
 cd ~/magicdash
 bash kiosk/install.sh
 sudo reboot
@@ -214,6 +214,10 @@ entered once under *Plugins → Random image*. Results are cached on the server 
 hammers a provider. To show your own photos, set the folder in *Plugins → Random image* (e.g. `/home/pi/Pictures`),
 then choose *Folder on the server* in the tile.
 
+## Contributing & license
+
+MIT. Issues and PRs welcome — plugins especially. CI runs typecheck, build and an MCP smoke test on every push.
+
 ## Project layout
 
 ```
@@ -221,6 +225,7 @@ server/        Express API: layout & settings storage, SSE event bus, plugin loa
 src/sdk/       Plugin SDK (types, client hooks, server context) — import from '@sdk/client' / '@sdk/server'
 src/app/       Host UI: grid, tile chrome, auto-generated settings forms, toolbar
 plugins/*/     One folder per plugin: manifest.ts, client.tsx, optional server.ts
+mcp/           MCP server for AI agents (stdio)
 kiosk/         Pi install script, systemd unit, Chromium kiosk launcher, first-boot waiting page
 image/         Flashable Raspberry Pi OS image builder + first-boot provisioner + Imager repo file
 data/          Runtime state (layout.json, settings.json, plugin data) — git-ignored
@@ -235,6 +240,31 @@ the same dialog. Only install plugins you trust — they run on the Pi. Disable 
 
 Manual alternative: copy the folder into `plugins/`, then `npm run build && sudo systemctl restart magicdash`.
 
+## Control it from an AI agent (MCP)
+
+`mcp/server.ts` is a [Model Context Protocol](https://modelcontextprotocol.io) server that exposes the dashboard to
+Claude Code, Claude Desktop, Cursor and friends: read the layout, add/move/configure tiles, manage screens and rotation,
+switch themes, set plugin settings, pull a screen forward (attention lock), export/import backups, and even install a
+plugin from source files and rebuild.
+
+```bash
+# Claude Code
+claude mcp add magicdash -e MAGICDASH_URL=http://magicdash.local:3210 -- npx tsx /path/to/magicdash/mcp/server.ts
+```
+
+Claude Desktop / other clients — `mcpServers` entry:
+
+```json
+{ "magicdash": { "command": "npx", "args": ["tsx", "/path/to/magicdash/mcp/server.ts"], "env": { "MAGICDASH_URL": "http://magicdash.local:3210" } } }
+```
+
+Then ask: *"add a weather tile for Amsterdam to the Main screen"*, *"make a second screen with news and word of the day and rotate every 20 s"*,
+*"switch to the Sunset theme"*, *"write me a plugin that shows my bus departures"* (the agent reads `AGENTS.md`/`docs/PLUGINS.md`
+via `read_plugin_docs`, installs with `install_plugin_files`, then `rebuild_and_restart`).
+
+`npm run mcp:test` smoke-tests the server against a running dashboard. The same operations are plain HTTP, e.g. from a
+Home Assistant automation: `POST /api/screens/show { "screenId": "Kitchen" }` or `POST /api/attention { "screenId": "Main", "reason": "Doorbell" }`.
+
 ## Writing a plugin
 
 ```bash
@@ -242,7 +272,8 @@ npm run new-plugin my-widget "My Widget"   # scaffold from plugins/_template
 npm run pack-plugin my-widget              # zip it up to share
 ```
 
-Full guide: [docs/PLUGINS.md](docs/PLUGINS.md).
+Step-by-step tutorial: [docs/PLUGIN-TUTORIAL.md](docs/PLUGIN-TUTORIAL.md) · reference: [docs/PLUGINS.md](docs/PLUGINS.md) ·
+for AI agents and contributors: [AGENTS.md](AGENTS.md).
 
 ## Scripts
 
@@ -254,6 +285,8 @@ Full guide: [docs/PLUGINS.md](docs/PLUGINS.md).
 | `npm run typecheck` | TypeScript check across host, SDK and plugins |
 | `npm run new-plugin <id>` | scaffold a plugin |
 | `npm run pack-plugin <id>` | zip a plugin for sharing / uploading |
+| `npm run mcp` | start the MCP server (stdio) for AI agents |
+| `npm run mcp:test` | smoke-test the MCP server against a running dashboard |
 
 Environment: `MAGICDASH_PORT` (3210), `MAGICDASH_DATA` (`./data`), `PUBLIC_URL` (used for OAuth redirects when set),
 `MAGICDASH_PLUGIN_UPLOAD=off` (disable installing plugins from the browser).

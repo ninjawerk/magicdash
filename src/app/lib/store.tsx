@@ -309,6 +309,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (ev.plugin !== '$host') return;
+      if (ev.event === 'showScreen') {
+        const { screenId } = ev.payload as { screenId: string };
+        if (!attentionRef.current) showScreen(screenId);
+        return;
+      }
+      if (ev.event === 'attention') {
+        const { action, screenId, holder, reason } = ev.payload as { action: string; screenId?: string; holder: string; reason?: string };
+        if (action === 'release') releaseAttention(holder);
+        else if (screenId) requestAttention(holder, 'api', screenId, reason);
+        return;
+      }
       if (ev.event === 'layout') {
         const incoming = normalizeLayout(ev.payload as DashboardLayout);
         const json = JSON.stringify(incoming);
@@ -321,7 +332,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         reloadPluginSettings(pluginId);
       }
     });
-  }, [reloadPluginSettings, applyIncoming, requestAttention, releaseAttention]);
+  }, [reloadPluginSettings, applyIncoming, requestAttention, releaseAttention, showScreen]);
 
   const value = useMemo<Store>(
     () => ({
