@@ -1,0 +1,158 @@
+@import 'tailwindcss';
+@import 'react-grid-layout/css/styles.css';
+@import 'react-resizable/css/styles.css';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+:root {
+  --accent: #7c9cff;
+  --tile-bg: rgba(255, 255, 255, 0.05);
+  --tile-radius: 22px;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #0b0f17;
+  color: #e7ebf3;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+body.hide-cursor,
+body.hide-cursor * {
+  cursor: none !important;
+}
+
+/* Tiles */
+.tile {
+  background: var(--tile-bg);
+  border-radius: var(--tile-radius);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+.tile.editing {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent), 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  cursor: grab;
+}
+.tile.editing:active {
+  cursor: grabbing;
+}
+.react-grid-item.react-grid-placeholder {
+  background: color-mix(in srgb, var(--accent) 35%, transparent) !important;
+  border-radius: var(--tile-radius);
+  opacity: 1 !important;
+}
+.react-grid-item > .react-resizable-handle {
+  z-index: 20;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  width: 10px !important;
+  height: 10px !important;
+  right: 6px !important;
+  bottom: 6px !important;
+}
+.react-grid-item.react-draggable-dragging {
+  z-index: 30;
+  transition: none;
+}
+.react-grid-item {
+  transition: transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), width 250ms ease, height 250ms ease;
+}
+
+/* Alert state used by the schedule widget in the final minute */
+@keyframes pulse-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0), inset 0 0 0 1px rgba(255, 82, 82, 0.35);
+    background-color: rgba(255, 60, 60, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 40px 4px rgba(255, 82, 82, 0.45), inset 0 0 0 1px rgba(255, 82, 82, 0.9);
+    background-color: rgba(255, 60, 60, 0.36);
+  }
+}
+.tile.alert {
+  animation: pulse-alert 1.2s ease-in-out infinite;
+  border-color: rgba(255, 110, 110, 0.7);
+}
+
+/* Fade for slideshows */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fade-in 800ms ease both;
+}
+@keyframes ken-burns {
+  from {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(1%, -1%, 0);
+  }
+}
+.ken-burns {
+  animation: ken-burns 30s ease-in-out both;
+}
+
+/* Scrollbars (touch kiosks look nicer without them) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+/* Form controls */
+.input {
+  @apply w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-[var(--accent)] focus:bg-white/[0.07] transition;
+}
+.btn {
+  @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition select-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed;
+}
+.btn-default {
+  @apply bg-white/8 hover:bg-white/14 text-white border border-white/10;
+}
+.btn-primary {
+  @apply bg-[var(--accent)] hover:brightness-110 text-black;
+}
+.btn-danger {
+  @apply bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/30;
+}
+.btn-ghost {
+  @apply hover:bg-white/10 text-white/80;
+}
+.label {
+  @apply block text-xs font-semibold uppercase tracking-wider text-white/50 mb-1.5;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

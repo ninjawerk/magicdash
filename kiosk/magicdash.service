@@ -1,0 +1,18 @@
+[Unit]
+Description=MagicDash dashboard server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__
+Environment=NODE_ENV=production
+Environment=MAGICDASH_PORT=3210
+# Environment=PUBLIC_URL=http://raspberrypi.local:3210
+ExecStart=__NPM__ start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
