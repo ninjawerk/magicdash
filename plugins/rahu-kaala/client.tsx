@@ -114,6 +114,7 @@ function RahuKaalaWidget({ config, context, size, setAlert, editMode, openSettin
       )}
       {!compact && (extras.length > 0 || config.showSun !== false) && (
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-white/10 pt-2 text-xs text-white/55">
+          {extras.length > 0 && <span className="text-white/40">{t('alsoAvoid')}:</span>}
           {extras.map((p) => (
             <span key={p.key} className={ms >= p.start.getTime() && ms < p.end.getTime() ? 'text-[var(--warm)]' : ''}>
               <span className="text-white/40">{t(p.key)}</span> {fmt(p.start)}–{fmt(p.end)}
@@ -145,25 +146,26 @@ export default definePlugin<Config>({
   customFields: { location: LocationField as React.ComponentType<CustomFieldProps> },
   translations: {
     en: {
-      rahu: 'Rahu Kaala',
-      yamagandam: 'Yamagandam',
+      rahu: 'Rahu period — avoid starting new things',
+      yamagandam: 'Yama',
       gulika: 'Gulika',
+      alsoAvoid: 'Also avoid',
       today: 'Today',
       tomorrow: 'Tomorrow',
-      now: 'Rahu Kaala now',
-      soon: 'Starting soon',
-      over: 'Over for today',
+      now: 'Avoid now — Rahu period',
+      soon: 'Rahu period starting soon',
+      over: 'Done for today',
       startsIn: 'starts in',
       endsIn: 'ends in',
       noLocation: 'Set the dashboard location (Appearance → Dashboard) or pick one in this tile’s settings.',
       polar: 'No sunrise/sunset here today.',
-      abhijit: 'Best time · Abhijit',
+      abhijit: 'Best time of day',
       now2: 'now',
-      wed: 'not on Wednesdays',
-      wedNote: 'Tradition skips Abhijit Muhurta on Wednesdays.',
+      wed: 'traditionally skipped on Wednesdays',
+      wedNote: 'Tradition skips the midday best time on Wednesdays.',
     },
-    ta: { abhijit: 'நல்ல நேரம் · அபிஜித்', now2: 'இப்போது', wed: 'புதன் தவிர', rahu: 'ராகு காலம்', yamagandam: 'எமகண்டம்', gulika: 'குளிகை', today: 'இன்று', tomorrow: 'நாளை', now: 'இப்போது ராகு காலம்', soon: 'விரைவில்', over: 'இன்று முடிந்தது', startsIn: 'தொடங்க', endsIn: 'முடிய' },
-    si: { abhijit: 'සුබ වේලාව · අභිජිත්', now2: 'දැන්', wed: 'බදාදා හැර', rahu: 'රාහු කාලය', yamagandam: 'යමගණ්ඩ', gulika: 'ගුලික', today: 'අද', tomorrow: 'හෙට', now: 'දැන් රාහු කාලය', soon: 'ළඟදීම', over: 'අද අවසන්', startsIn: 'ආරම්භයට', endsIn: 'අවසානයට' },
-    hi: { abhijit: 'शुभ समय · अभिजित', now2: 'अभी', wed: 'बुधवार को नहीं', rahu: 'राहु काल', yamagandam: 'यमगण्ड', gulika: 'गुलिक', today: 'आज', tomorrow: 'कल', now: 'अभी राहु काल', soon: 'जल्द शुरू', over: 'आज समाप्त', startsIn: 'शुरू होने में', endsIn: 'समाप्त होने में' },
+    ta: { alsoAvoid: 'தவிர்க்க', abhijit: 'நல்ல நேரம் · அபிஜித்', now2: 'இப்போது', wed: 'புதன் தவிர', rahu: 'ராகு காலம்', yamagandam: 'எமகண்டம்', gulika: 'குளிகை', today: 'இன்று', tomorrow: 'நாளை', now: 'இப்போது ராகு காலம்', soon: 'விரைவில்', over: 'இன்று முடிந்தது', startsIn: 'தொடங்க', endsIn: 'முடிய' },
+    si: { alsoAvoid: 'වළකින්න', abhijit: 'සුබ වේලාව · අභිජිත්', now2: 'දැන්', wed: 'බදාදා හැර', rahu: 'රාහු කාලය', yamagandam: 'යමගණ්ඩ', gulika: 'ගුලික', today: 'අද', tomorrow: 'හෙට', now: 'දැන් රාහු කාලය', soon: 'ළඟදීම', over: 'අද අවසන්', startsIn: 'ආරම්භයට', endsIn: 'අවසානයට' },
+    hi: { alsoAvoid: 'इनसे भी बचें', abhijit: 'शुभ समय · अभिजित', now2: 'अभी', wed: 'बुधवार को नहीं', rahu: 'राहु काल', yamagandam: 'यमगण्ड', gulika: 'गुलिक', today: 'आज', tomorrow: 'कल', now: 'अभी राहु काल', soon: 'जल्द शुरू', over: 'आज समाप्त', startsIn: 'शुरू होने में', endsIn: 'समाप्त होने में' },
   },
 });

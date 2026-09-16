@@ -2,13 +2,33 @@ import { useEffect, useState } from 'react';
 import { Copy, KeyRound, Loader2, Plus, Trash2 } from 'lucide-react';
 import { hostApi } from '../../lib/api';
 import { useStore } from '../../lib/store';
+import { SchemaForm } from '../../components/SchemaForm';
+import { LOCALE_FIELDS } from '../../components/Dialogs';
+import { Languages } from 'lucide-react';
 
 export function SettingsPage() {
   return (
     <div className="space-y-6">
+      <LanguageSection />
       <PasswordSection />
       <TokensSection />
     </div>
+  );
+}
+
+function LanguageSection() {
+  const { layout, updateLayout, apiFor } = useStore();
+  const value = { locale: layout?.locale ?? '' };
+  return (
+    <section className="surface rounded-2xl border border-white/10 p-6">
+      <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-white/70">
+        <Languages size={14} /> Language
+      </h2>
+      <p className="mb-4 text-xs text-white/45">Applies to the kiosk immediately: dates, times, toolbar, and any plugin that ships translations.</p>
+      <div className="max-w-md">
+        <SchemaForm fields={LOCALE_FIELDS} value={value} onChange={(v) => updateLayout((l) => ({ ...l, locale: (v.locale as string) || undefined }))} api={apiFor('$host')} />
+      </div>
+    </section>
   );
 }
 

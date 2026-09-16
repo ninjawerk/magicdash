@@ -42,6 +42,19 @@ export function translate(namespace: string, key: string, vars?: Record<string, 
   return s;
 }
 
+/** React hook: the selected locale (BCP-47), re-rendering when it changes. Use for Intl formatting. */
+export function useLocale(): string {
+  const [l, setL] = useState(locale);
+  useEffect(() => {
+    const fn = () => setL(locale);
+    listeners.add(fn);
+    return () => {
+      listeners.delete(fn);
+    };
+  }, []);
+  return l;
+}
+
 /** React hook: returns a `t()` bound to a namespace that re-renders on locale change. */
 export function useT(namespace: string) {
   const [, bump] = useState(0);
@@ -90,6 +103,40 @@ registerTranslations('host', {
     'login.cancel': 'Abbrechen',
     'display.off': 'Bildschirm schläft — tippen zum Aufwecken',
     'common.loading': 'Lädt…',
+  },
+  fr: {
+    'toolbar.edit': 'Modifier',
+    'toolbar.admin': 'Admin',
+    'toolbar.done': 'Terminé',
+    'toolbar.add': 'Ajouter',
+    'toolbar.theme': 'Thème',
+    'toolbar.plugins': 'Plugins',
+    'toolbar.remote': 'À distance',
+    'toolbar.backup': 'Sauvegarde',
+    'toolbar.screens': 'Écrans',
+    'login.title': 'Connexion pour modifier',
+    'login.subtitle': 'Entrez le mot de passe administrateur.',
+    'login.button': 'Se connecter',
+    'login.cancel': 'Annuler',
+    'display.off': 'Écran en veille — touchez pour réveiller',
+    'common.loading': 'Chargement…',
+  },
+  es: {
+    'toolbar.edit': 'Editar',
+    'toolbar.admin': 'Admin',
+    'toolbar.done': 'Listo',
+    'toolbar.add': 'Añadir',
+    'toolbar.theme': 'Tema',
+    'toolbar.plugins': 'Plugins',
+    'toolbar.remote': 'Remoto',
+    'toolbar.backup': 'Copia',
+    'toolbar.screens': 'Pantallas',
+    'login.title': 'Inicia sesión para editar',
+    'login.subtitle': 'Introduce la contraseña de administrador.',
+    'login.button': 'Entrar',
+    'login.cancel': 'Cancelar',
+    'display.off': 'Pantalla en reposo — toca para activar',
+    'common.loading': 'Cargando…',
   },
   nl: {
     'toolbar.edit': 'Bewerken',

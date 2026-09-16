@@ -12,14 +12,14 @@ interface Config {
   label?: string;
 }
 
-function ClockWidget({ config, size }: WidgetProps<Config>) {
+function ClockWidget({ config, size, locale }: WidgetProps<Config>) {
   const now = useNow(config.seconds ? 250 : 1000);
   const tz = config.timeZone?.trim() || undefined;
   // Build the time as parts so the colons can be their own elements (for blinking).
   let parts: Array<{ type: string; value: string }> = [];
   let period = '';
   try {
-    parts = new Intl.DateTimeFormat([], {
+    parts = new Intl.DateTimeFormat(locale, {
       hour: 'numeric',
       minute: '2-digit',
       second: config.seconds ? '2-digit' : undefined,
@@ -31,7 +31,7 @@ function ClockWidget({ config, size }: WidgetProps<Config>) {
     parts = [{ type: 'literal', value: 'Bad TZ' }];
   }
   const timeParts = parts.filter((p) => p.type === 'hour' || p.type === 'minute' || p.type === 'second' || (p.type === 'literal' && p.value.trim() === ':'));
-  const date = new Intl.DateTimeFormat([], { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }).format(now);
+  const date = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', timeZone: tz }).format(now);
   // Scale the type to the tile.
   const fontSize = Math.min(size.height * (config.date ? 0.5 : 0.7), size.width / (config.seconds ? 5.2 : 3.6));
 

@@ -3,6 +3,7 @@ import { Settings2, Trash2, AlertTriangle, Puzzle } from 'lucide-react';
 import { defaultsFor, type WidgetInstance } from '@sdk';
 import { getClientPlugin } from '../lib/registry';
 import { useStore } from '../lib/store';
+import { useLocale } from '@sdk/i18n';
 
 class ErrorBoundary extends Component<{ children: ReactNode; resetKey: string }, { error?: Error }> {
   state: { error?: Error } = {};
@@ -32,6 +33,7 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
   const ref = useRef<HTMLDivElement>(null);
   const [px, setPx] = useState({ width: 0, height: 0 });
   const [alert, setAlert] = useState(false);
+  const locale = useLocale();
   const [background, setBackground] = useState<string>();
   const openSettings = useCallback(() => setDialog({ kind: 'widget', widgetId: widget.id }), [setDialog, widget.id]);
   const held = lock?.holder === widget.id;
@@ -82,6 +84,7 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
               config={config}
               settings={pluginSettings[widget.pluginId] ?? {}}
               context={layout?.context ?? {}}
+              locale={locale}
               size={{ w: widget.w, h: widget.h, ...px }}
               editMode={editMode}
               api={apiFor(widget.pluginId)}
