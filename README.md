@@ -48,6 +48,23 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 | 🔳 **QR code** | Guest Wi-Fi login, a link or any text as a scannable code. |
 | 🪐 **Rahu Kaala** | Today’s Rahu Kaala and the auspicious Abhijit Muhurta (plus Yamagandam, Gulika) from local sunrise/sunset, live countdown, red while running. Offline. |
 
+## Community plugins (catalog)
+
+Installed with one click from *Admin → Plugins → Browse catalog*. Each lives in its own repo and is pinned by checksum in
+[magicdash-plugins](https://github.com/ninjawerk/magicdash-plugins).
+
+| Plugin | What it does |
+| --- | --- |
+| ✅ [Tasks](https://github.com/ninjawerk/magicdash-tasks) | Today’s to-dos from Todoist, Google Tasks or a Home Assistant list. Tap to complete. |
+| ⏲️ [Timers](https://github.com/ninjawerk/magicdash-timers) | Tap-to-start kitchen and focus timers with presets; loud finish, shared across displays. |
+| 🗓️ [Calendar week & month](https://github.com/ninjawerk/magicdash-calendar-grid) | Week strip / month grid on top of the bundled Schedule plugin. |
+| 🚌 [Transit departures](https://github.com/ninjawerk/magicdash-transit) | Next buses, trams and trains from any stop worldwide, with real-time delays. |
+| 📌 [Message board](https://github.com/ninjawerk/magicdash-message-board) | A shared household note, posted from the admin, your phone or an automation. |
+| 🏡 [Home Assistant cards](https://github.com/ninjawerk/magicdash-ha-cards) | Camera, thermostat with controls, media player with album art, sensor history. |
+| 🌬️ [Air quality & pollen](https://github.com/ninjawerk/magicdash-air-quality) | AQI, particulates, ozone, NO₂ and pollen for your location. |
+| 📷 [Photo album](https://github.com/ninjawerk/magicdash-photo-album) | Your own photos from an Immich album or a Nextcloud / WebDAV folder. |
+| ⏳ [Countdown](https://github.com/ninjawerk/magicdash-countdown) | Days, hours and minutes until a date, with repeat rules. The plugin from the tutorial. |
+
 ## Quick start (development)
 
 ```bash
