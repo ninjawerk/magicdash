@@ -13,9 +13,21 @@ export type DialogState =
   | { kind: 'theme' }
   | { kind: 'backup' }
   | { kind: 'install' }
-  | { kind: 'screens' };
+  | { kind: 'screens' }
+  | { kind: 'login' };
+
+export interface AuthState {
+  configured: boolean;
+  authenticated: boolean;
+  loaded: boolean;
+}
 
 interface Store {
+  auth: AuthState;
+  refreshAuth: () => Promise<AuthState>;
+  login: (password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  setup: (password: string) => Promise<void>;
   layout: DashboardLayout | undefined;
   error: string | undefined;
   editMode: boolean;
@@ -75,6 +87,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [pluginSettings, setPluginSettings] = useState<Record<string, Record<string, unknown>>>({});
   const [activeScreenId, setActiveScreenId] = useState('main');
   const [attention, setAttention] = useState<AttentionLock | null>(null);
+  const [auth, setAuth] = useState<AuthState>({ configured: false, authenticated: false, loaded: false });
+
+  const refreshAuth = useCallback(async () => {
+    const st = await hostApi.authStatus().catch(() => ({ configured: false, authenticated: false }));
+    const next = { ...st, loaded: true };
+    setAuth(next);
+    return next;
+  }, []);
+  useEffect(() => {
+    refreshAuth();
+  }, [refreshAuth]);
+  const login = useCallback(
+    async (password: string) => {
+      await hostApi.login(password);
+      await refreshAuth();
+    },
+    [refreshAuth],
+  );
+  const logout = useCallback(async () => {
+    await hostApi.logout();
+    setEditMode(false);
+    await refreshAuth();
+  }, [refreshAuth]);
+  const setup = useCallback(
+    async (password: string) => {
+      await hostApi.setupPassword(password);
+      await refreshAuth();
+    },
+    [refreshAuth],
+  );
   const lastSaved = useRef<string>('');
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const draggingRef = useRef(false);
@@ -139,7 +181,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const json = JSON.stringify(next);
       if (json === lastSaved.current) return;
       lastSaved.current = json;
-      hostApi.saveLayout(next).catch((e) => console.error('save failed', e));
+      hostApi.saveLayout(next).catch((e) => {
+        console.error('save failed', e);
+        if (/sign in|password/i.test((e as Error).message)) {
+          setEditMode(false);
+          setDialog({ kind: 'login' });
+        }
+      });
     }, 400);
   }, []);
 
@@ -336,6 +384,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Store>(
     () => ({
+      auth,
+      refreshAuth,
+      login,
+      logout,
+      setup,
       layout,
       error,
       editMode,
@@ -362,6 +415,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       releaseAttention: releaseAttentionPublic,
     }),
     [
+      auth,
+      refreshAuth,
+      login,
+      logout,
+      setup,
       layout,
       error,
       editMode,

@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './lib/store';
 import { Dashboard } from './components/Dashboard';
 import { Dialogs } from './components/Dialogs';
 import { Toolbar } from './components/Toolbar';
+import { AdminApp } from './admin/AdminApp';
 import { applyTheme, normalizeTheme } from './lib/themes';
 
 function Shell() {
@@ -43,9 +44,6 @@ function Shell() {
 }
 
 export default function App() {
-  return (
-    <StoreProvider>
-      <Shell />
-    </StoreProvider>
-  );
+  const isAdmin = window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/');
+  return <StoreProvider>{isAdmin ? <AdminApp /> : <Shell />}</StoreProvider>;
 }

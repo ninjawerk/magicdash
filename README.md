@@ -16,8 +16,11 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 - **Screens.** Several pages of tiles that rotate every N seconds. Plugins can grab **attention** — the Schedule tile
   pulls its screen forward for the last minute of an event and the two minutes before the next; Home Assistant can do
   it when a door opens. One plugin at a time, two minutes at most.
-- **Edit from anywhere.** The layout lives on the server. Open the dashboard on your phone or laptop, rearrange,
-  and the kiosk updates live.
+- **Admin panel** at `/admin`, password protected, Home Assistant style: live layout editor, screens, plugins and catalog,
+  appearance, backup, live logs, one-click updates, API tokens. The kiosk view itself stays open on your network; editing
+  needs the password.
+- **Edit from anywhere.** The layout lives on the server. Open `/admin` on your phone or laptop, rearrange, and the kiosk
+  updates live.
 - **Plugins.** Each widget is a folder in `plugins/` with a manifest, a React component and an optional server module.
   Settings UIs are generated from the manifest. See [docs/PLUGINS.md](docs/PLUGINS.md).
 - **Kiosk-ready.** One install script sets up a systemd service, Chromium in kiosk mode, and disables screen blanking.
@@ -129,7 +132,8 @@ Press **E** or tap the pencil to enter edit mode. On the kiosk itself, *Edit →
 
 Away from home, put the Pi and your laptop on the same [Tailscale](https://tailscale.com) network
 (`curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up` on the Pi) and use the Pi's Tailscale
-address. The dashboard has no login of its own, so don't forward port 3210 on your router.
+address. The dashboard view has no login and the admin password is sent over plain http on your LAN, so don't forward port 3210
+on your router; use Tailscale or a reverse proxy with TLS if you need remote access.
 
 ### If the screen still sleeps or the kiosk doesn't appear
 
@@ -137,6 +141,30 @@ address. The dashboard has no login of its own, so don't forward port 3210 on yo
 - Kiosk didn't start: make sure the Pi boots to the desktop with auto-login (*Raspberry Pi Configuration → System → Auto Login*),
   then check `~/.local/state/magicdash-kiosk.log`.
 - Server didn't start: `systemctl status magicdash`.
+
+## Admin panel
+
+Open `http://<pi>:3210/admin`. The first visit asks you to **set an admin password**; after that the panel and the
+kiosk's edit mode require it (sessions last 30 days per browser). Pages:
+
+| Page | |
+| --- | --- |
+| **Overview** | version, uptime, CPU temperature, memory, connected displays, addresses |
+| **Layout** | the real grid in edit mode — drag, resize, add tiles, per-tile settings; the kiosk mirrors it live |
+| **Screens** | add / rename / reorder screens, rotation interval |
+| **Plugins** | plugin-wide settings (Google, Home Assistant, keys), catalog browse/install/update, upload, installed list |
+| **Appearance** | theme presets and colours, grid size |
+| **Backup** | export / import |
+| **Logs** | live tail of the server and plugin logs with level filter and download |
+| **Updates** | compares your checkout with the remote and the latest release; **Update now** runs `git pull`, `npm ci`, `npm run build` and restarts |
+| **Settings** | change password, API tokens for the MCP server / automations |
+
+Recovery: `npm run set-password <new>` on the Pi, then `sudo systemctl restart magicdash`. You can also preset the
+password with `MAGICDASH_ADMIN_PASSWORD` in the systemd unit for unattended installs.
+
+What stays public without a password: the dashboard view, plugin data routes the widgets use, `POST /api/screens/show`
+and `POST /api/attention` (for automations). Everything that changes configuration needs a session cookie or an
+`Authorization: Bearer <token>` header.
 
 ## Themes & grid
 
@@ -253,15 +281,17 @@ Claude Code, Claude Desktop, Cursor and friends: read the layout, add/move/confi
 switch themes, set plugin settings, pull a screen forward (attention lock), export/import backups, and even install a
 plugin from source files and rebuild.
 
+Create an API token under *Admin → Settings → API tokens*, then:
+
 ```bash
 # Claude Code
-claude mcp add magicdash -e MAGICDASH_URL=http://magicdash.local:3210 -- npx tsx /path/to/magicdash/mcp/server.ts
+claude mcp add magicdash -e MAGICDASH_URL=http://magicdash.local:3210 -e MAGICDASH_TOKEN=md_… -- npx tsx /path/to/magicdash/mcp/server.ts
 ```
 
 Claude Desktop / other clients — `mcpServers` entry:
 
 ```json
-{ "magicdash": { "command": "npx", "args": ["tsx", "/path/to/magicdash/mcp/server.ts"], "env": { "MAGICDASH_URL": "http://magicdash.local:3210" } } }
+{ "magicdash": { "command": "npx", "args": ["tsx", "/path/to/magicdash/mcp/server.ts"], "env": { "MAGICDASH_URL": "http://magicdash.local:3210", "MAGICDASH_TOKEN": "md_…" } } }
 ```
 
 Then ask: *"add a weather tile for Amsterdam to the Main screen"*, *"make a second screen with news and word of the day and rotate every 20 s"*,
@@ -269,7 +299,8 @@ Then ask: *"add a weather tile for Amsterdam to the Main screen"*, *"make a seco
 via `read_plugin_docs`, installs with `install_plugin_files`, then `rebuild_and_restart`).
 
 `npm run mcp:test` smoke-tests the server against a running dashboard. The same operations are plain HTTP, e.g. from a
-Home Assistant automation: `POST /api/screens/show { "screenId": "Kitchen" }` or `POST /api/attention { "screenId": "Main", "reason": "Doorbell" }`.
+Home Assistant automation: `POST /api/screens/show { "screenId": "Kitchen" }` or `POST /api/attention { "screenId": "Main", "reason": "Doorbell" }`
+(these two need no token).
 
 ## Writing a plugin
 
@@ -293,6 +324,8 @@ for AI agents and contributors: [AGENTS.md](AGENTS.md).
 | `npm run pack-plugin <id>` | zip a plugin for sharing / uploading |
 | `npm run mcp` | start the MCP server (stdio) for AI agents |
 | `npm run mcp:test` | smoke-test the MCP server against a running dashboard |
+| `npm run set-password <pw>` | reset the admin password (recovery) |
 
 Environment: `MAGICDASH_PORT` (3210), `MAGICDASH_DATA` (`./data`), `PUBLIC_URL` (used for OAuth redirects when set),
-`MAGICDASH_PLUGIN_UPLOAD=off` (disable installing plugins from the browser).
+`MAGICDASH_PLUGIN_UPLOAD=off` (disable installing plugins from the browser), `MAGICDASH_ADMIN_PASSWORD` (preset the admin
+password on first start), `MAGICDASH_REPO` (GitHub repo checked for releases, default `ninjawerk/magicdash`).

@@ -9,6 +9,9 @@ import { DATA_DIR, layoutStore, settingsStore } from './storage';
 import { createBackup, restoreBackup, validateBackup } from './backup';
 import { registerInstallRoutes } from './install';
 import { registerCatalogRoutes } from './catalog';
+import { loadAuth, registerAuthRoutes, requireAuth } from './auth';
+import { installLogCapture, registerLogRoutes } from './logs';
+import { registerUpdateRoutes } from './update';
 import { HOST_VERSION } from './version';
 import { SDK_VERSION } from '../src/sdk/types';
 
@@ -39,13 +42,17 @@ function secretKeys(fields: ConfigField[] | undefined): Set<string> {
 }
 
 async function main() {
-  await Promise.all([layoutStore.load(), settingsStore.load()]);
+  installLogCapture();
+  await Promise.all([layoutStore.load(), settingsStore.load(), loadAuth()]);
   const publicUrl = detectPublicUrl();
   await loadPlugins(() => publicUrl);
 
   const app = express();
   app.disable('x-powered-by');
+  app.set('trust proxy', 'loopback');
   app.use(express.json({ limit: '20mb' }));
+  registerAuthRoutes(app);
+  app.use(requireAuth); // everything under /api that isn't on the public allowlist needs a session or token
 
   // --- Core API ---------------------------------------------------------------
   app.get('/api/health', (_req, res) => {
@@ -182,6 +189,8 @@ async function main() {
   // --- Plugin install / remove / rebuild ---------------------------------------------
   registerInstallRoutes(app);
   registerCatalogRoutes(app);
+  registerLogRoutes(app);
+  registerUpdateRoutes(app);
 
   // --- Plugin routers -----------------------------------------------------------
   for (const p of allPlugins()) {
@@ -200,6 +209,7 @@ async function main() {
 
   const server = app.listen(PORT, HOST, () => {
     console.log(`\n  MagicDash server  →  http://localhost:${PORT}  (public: ${publicUrl})`);
+    console.log(`  Admin             →  ${IS_PROD ? publicUrl : 'http://localhost:5173'}/admin`);
     if (!IS_PROD) console.log(`  Dev UI            →  http://localhost:5173\n`);
   });
 

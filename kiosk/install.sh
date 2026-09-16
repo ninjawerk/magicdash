@@ -94,7 +94,7 @@ cat <<MSG
 
   On this Pi:            http://localhost:$PORT   (Chromium opens it full-screen at every login)
   From your laptop:      http://$HOST.local:$PORT   or   http://$IP:$PORT
-                         → press E or tap the pencil to edit; the Pi screen updates live.
+  Admin panel:           http://$HOST.local:$PORT/admin   (first visit sets the admin password)
 
   Start the kiosk now:   sudo reboot
   Server logs:           journalctl -u magicdash -f

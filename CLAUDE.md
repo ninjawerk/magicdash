@@ -9,4 +9,6 @@ Read `AGENTS.md` first — it explains the architecture, the plugin contract and
 - **Theme tokens** (`--accent --fg --cool --warm --surface`) instead of hard-coded colours; `text-white/NN` follows the theme.
 - **Verify** with `npm run typecheck`, `curl` against `localhost:3210/api/...`, and the browser at `localhost:5173`.
 - **Commits**: no Co-Authored-By or other attribution trailers. Never commit directly to `main`; branch + PR.
+- **Auth**: state-changing API routes need a session/token (`server/auth.ts` allowlist). When testing with curl, log in first
+  (`POST /api/auth/login`, cookie jar) or pass `Authorization: Bearer <token>`.
 - After adding a bundled plugin, add its id to `BUNDLED_PLUGINS` in `server/install.ts` and a row in the README plugin table.

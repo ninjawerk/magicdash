@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, DatabaseBackup, Layers, LayoutGrid, MonitorSmartphone, PackagePlus, Palette, Pencil, Pin, Plus, Puzzle } from 'lucide-react';
+import { Check, DatabaseBackup, Layers, LayoutGrid, MonitorSmartphone, PackagePlus, Palette, Pencil, Pin, Plus, Puzzle, Shield } from 'lucide-react';
 import { hostApi } from '../lib/api';
 import { listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
@@ -10,7 +10,12 @@ import { useStore } from '../lib/store';
  *  - keyboard: "e" toggles edit mode, Escape leaves it
  */
 export function Toolbar() {
-  const { editMode, setEditMode, setDialog, dialog, layout, activeScreenId, showScreen, attention } = useStore();
+  const { editMode, setEditMode, setDialog, dialog, layout, activeScreenId, showScreen, attention, auth } = useStore();
+  /** Entering edit mode requires the admin password; the kiosk view itself stays open. */
+  const enterEdit = () => {
+    if (auth.authenticated) setEditMode(true);
+    else setDialog({ kind: 'login' });
+  };
   const screens = layout?.screens ?? [];
   const [visible, setVisible] = useState(true);
   const [pluginsOpen, setPluginsOpen] = useState(false);
@@ -51,12 +56,13 @@ export function Toolbar() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
-      if (e.key === 'e' && dialog.kind === 'none') setEditMode(!editMode);
+      if (e.key === 'e' && dialog.kind === 'none') (editMode ? setEditMode(false) : enterEdit());
       if (e.key === 'Escape' && dialog.kind === 'none') setEditMode(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [editMode, setEditMode, dialog.kind]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, setEditMode, dialog.kind, auth.authenticated]);
 
   const configurable = listClientPlugins().filter((p) => (p.manifest.settings?.length ?? 0) > 0);
 
@@ -170,10 +176,16 @@ export function Toolbar() {
           </button>
         </>
       ) : (
-        <button className="btn btn-ghost" onClick={() => setEditMode(true)} title="Edit layout (E)">
-          <Pencil size={16} />
-          <span className="hidden sm:inline">Edit</span>
-        </button>
+        <>
+          <button className="btn btn-ghost" onClick={enterEdit} title="Edit layout (E)">
+            <Pencil size={16} />
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+          <a className="btn btn-ghost" href="/admin" title="Admin panel">
+            <Shield size={16} />
+            <span className="hidden sm:inline">Admin</span>
+          </a>
+        </>
       )}
       {editMode && (
         <div className="hidden md:flex items-center gap-1 pl-2 pr-1 text-[10px] uppercase tracking-wider text-white/40">

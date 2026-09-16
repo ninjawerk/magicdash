@@ -1,5 +1,8 @@
 import { X } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
+
+/** When true, Modal renders as a plain panel (used by the admin pages to embed dialog content). */
+export const InlineModalContext = createContext(false);
 
 export function Modal({
   title,
@@ -16,11 +19,26 @@ export function Modal({
   footer?: ReactNode;
   width?: number;
 }) {
+  const inline = useContext(InlineModalContext);
   useEffect(() => {
+    if (inline) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, inline]);
+
+  if (inline) {
+    return (
+      <div className="flex flex-col">
+        <div className="px-1 pb-4">
+          <h2 className="text-xl font-semibold">{title}</h2>
+          {subtitle && <p className="text-sm text-white/50 mt-1">{subtitle}</p>}
+        </div>
+        <div className="select-text">{children}</div>
+        {footer && <div className="mt-6 flex items-center justify-end gap-2 border-t border-white/10 pt-4">{footer}</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onMouseDown={onClose}>
