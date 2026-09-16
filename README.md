@@ -11,7 +11,8 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
   what's *next* and a countdown to it. If nothing is on, it counts down to the next thing. In the final minute
   of an event the tile turns red and pulses.
 - **Tile grid.** Press `E` (or tap the pencil) to drag, resize, add and remove tiles. Other tiles stay put while you drag; hold a tile over
-  another for a moment and they swap places, like phone home screens. Every tile has its own settings.
+  another for a moment and they swap places, like phone home screens. If the other tile doesn't fit in your old slot it
+  moves to the nearest free spot; if there's no room anywhere the highlight turns red and nothing changes. Every tile has its own settings.
 - **Themes.** Eleven presets — Midnight, Pure black, Nord, Dracula, Solarized, Forest, Ocean, Sunset, Rosé and two
   light ones — plus full control over background, accent, text and tile colours. Changes preview live.
 - **Screens.** Several pages of tiles that rotate every N seconds. Plugins can grab **attention** — the Schedule tile
