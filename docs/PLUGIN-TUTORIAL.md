@@ -31,7 +31,7 @@ const manifest: PluginManifest = {
   minSize: { w: 2, h: 1 },
   widgetConfig: [
     { key: 'title', label: 'What are we counting down to?', type: 'string', placeholder: 'Holiday' },
-    { key: 'target', label: 'Date & time', type: 'string', placeholder: '2026-12-24T18:00', help: 'ISO format, local time.' },
+    { key: 'target', label: 'Date & time', type: 'datetime', help: 'Local time on the kiosk.' },
     { key: 'showSeconds', label: 'Show seconds', type: 'boolean', default: false },
     { key: 'grabAttention', label: 'Bring this screen forward in the last minute', type: 'boolean', default: true },
     {
@@ -50,7 +50,7 @@ export default manifest;
 ```
 
 Field types available: `string` (`secret: true` for keys), `textarea`, `number`, `boolean`, `color`, `select`, `multiselect`,
-`list`, `custom`, `action`. `showWhen: { key, equals | oneOf }` hides a field until another has a value.
+`list`, `date`, `datetime`, `time`, `custom`, `action`. `showWhen: { key, equals | oneOf }` hides a field until another has a value.
 
 ## 2. Render it — `client.tsx`
 

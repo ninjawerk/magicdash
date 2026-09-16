@@ -117,6 +117,43 @@ function Field({
           </span>
         </label>
       );
+    case 'date':
+    case 'datetime':
+    case 'time': {
+      const inputType = f.type === 'datetime' ? 'datetime-local' : f.type;
+      const now = new Date();
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const nowValue =
+        f.type === 'date'
+          ? `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+          : f.type === 'time'
+            ? `${pad(now.getHours())}:${pad(now.getMinutes())}`
+            : `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      return (
+        <div>
+          <label className="label">{f.label}</label>
+          <div className="flex items-center gap-2">
+            <input
+              className="input"
+              type={inputType}
+              value={(value as string) ?? ''}
+              min={'min' in f ? f.min : undefined}
+              max={'max' in f ? f.max : undefined}
+              onChange={(e) => set(e.target.value || undefined)}
+            />
+            <button type="button" className="btn btn-default whitespace-nowrap" onClick={() => set(nowValue)}>
+              Now
+            </button>
+            {value ? (
+              <button type="button" className="btn btn-ghost px-2" onClick={() => set(undefined)} title="Clear">
+                <Trash2 size={14} />
+              </button>
+            ) : null}
+          </div>
+          {help}
+        </div>
+      );
+    }
     case 'color':
       return (
         <div>
