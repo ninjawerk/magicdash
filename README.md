@@ -76,6 +76,30 @@ including `url(...)` for a wallpaper), accent, text and tile colours, corner rad
 The same dialog sets the grid: columns, rows, gap and screen padding. The grid always fills the screen exactly,
 so more rows just means finer placement.
 
+## Where data lives, backup & restore
+
+Everything is in the `data/` folder next to the app (override with `MAGICDASH_DATA`):
+
+| File | Contents |
+| --- | --- |
+| `data/layout.json` | tiles, per-tile settings, theme, grid |
+| `data/settings.json` | plugin-wide settings, including tokens and API keys |
+| `data/plugins/<id>/` | plugin files, e.g. Google sign-in tokens |
+
+Edit mode → **Backup** downloads a single JSON file (optionally without secrets) and restores one,
+with a choice of layout and/or plugin settings. The same endpoints work from a shell:
+
+```bash
+curl -o magicdash-backup.json "http://<pi>:3210/api/export?secrets=1"
+```
+
+```bash
+curl -X POST http://<pi>:3210/api/import -H 'content-type: application/json' \
+  -d "{\"backup\": $(cat magicdash-backup.json)}"
+```
+
+Or simply copy the `data/` folder — the server picks it up on restart.
+
 ## Configuring plugins
 
 Enter edit mode (`E`), then either open a tile's settings (⚙ on the tile) or **Plugins** in the toolbar

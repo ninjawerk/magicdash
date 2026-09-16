@@ -5,7 +5,8 @@ import os from 'node:os';
 import { SECRET_MASK, type DashboardLayout, type ConfigField } from '../src/sdk/types';
 import { addSseClient, broadcast, clientCount } from './events';
 import { allPlugins, getPlugin, getPluginSettings, loadPlugins, setPluginSettings, shutdownPlugins } from './plugins';
-import { layoutStore, settingsStore } from './storage';
+import { DATA_DIR, layoutStore, settingsStore } from './storage';
+import { createBackup, restoreBackup, validateBackup } from './backup';
 
 const PORT = Number(process.env.MAGICDASH_PORT ?? 3210);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -28,11 +29,11 @@ async function main() {
 
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '20mb' }));
 
   // --- Core API ---------------------------------------------------------------
   app.get('/api/health', (_req, res) => {
-    res.json({ ok: true, clients: clientCount(), plugins: allPlugins().map((p) => p.manifest.id), publicUrl });
+    res.json({ ok: true, clients: clientCount(), plugins: allPlugins().map((p) => p.manifest.id), publicUrl, dataDir: DATA_DIR });
   });
 
   app.get('/api/plugins', (_req, res) => {
@@ -89,6 +90,31 @@ async function main() {
   });
 
   app.get('/api/events', (_req, res) => addSseClient(res));
+
+  // --- Backup / restore ---------------------------------------------------------
+  /** GET /api/export?secrets=1 → downloadable JSON backup. */
+  app.get('/api/export', async (req, res) => {
+    const includeSecrets = req.query.secrets === '1' || req.query.secrets === 'true';
+    const backup = await createBackup(includeSecrets);
+    const stamp = backup.exportedAt.slice(0, 19).replace(/[:T]/g, '-');
+    res.setHeader('Content-Disposition', `attachment; filename="magicdash-backup-${stamp}${includeSecrets ? '' : '-no-secrets'}.json"`);
+    res.json(backup);
+  });
+
+  /** POST /api/import { backup, layout?: bool, settings?: bool } */
+  app.post('/api/import', async (req, res) => {
+    const { backup, layout = true, settings = true } = (req.body ?? {}) as { backup?: unknown; layout?: boolean; settings?: boolean };
+    if (!validateBackup(backup)) {
+      res.status(400).json({ error: 'That file is not a MagicDash backup.' });
+      return;
+    }
+    try {
+      const result = await restoreBackup(backup, { layout, settings });
+      res.json({ ok: true, ...result });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
+  });
 
   // --- Plugin routers -----------------------------------------------------------
   for (const p of allPlugins()) {

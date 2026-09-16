@@ -26,5 +26,10 @@ export const hostApi = {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(settings),
     }).then(json<{ ok: true }>),
-  health: () => fetch('/api/health').then(json<{ ok: boolean; plugins: string[]; publicUrl: string }>),
+  health: () => fetch('/api/health').then(json<{ ok: boolean; plugins: string[]; publicUrl: string; dataDir: string }>),
+  exportUrl: (secrets: boolean) => `/api/export?secrets=${secrets ? 1 : 0}`,
+  importBackup: (backup: unknown, opts: { layout: boolean; settings: boolean }) =>
+    fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ backup, ...opts }) }).then(
+      json<{ ok: true; layout: boolean; settings: string[]; files: number }>,
+    ),
 };

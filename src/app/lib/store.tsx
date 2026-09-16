@@ -10,7 +10,8 @@ export type DialogState =
   | { kind: 'add' }
   | { kind: 'widget'; widgetId: string }
   | { kind: 'plugin'; pluginId: string }
-  | { kind: 'theme' };
+  | { kind: 'theme' }
+  | { kind: 'backup' };
 
 interface Store {
   layout: DashboardLayout | undefined;

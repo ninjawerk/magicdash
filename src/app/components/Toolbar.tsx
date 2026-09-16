@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, LayoutGrid, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
+import { Check, DatabaseBackup, LayoutGrid, Palette, Pencil, Plus, Puzzle } from 'lucide-react';
 import { listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
 
@@ -86,6 +86,9 @@ export function Toolbar() {
               </div>
             )}
           </div>
+          <button className="btn btn-ghost" onClick={() => setDialog({ kind: 'backup' })} title="Export / import">
+            <DatabaseBackup size={16} /> Backup
+          </button>
           <button className="btn btn-primary" onClick={() => setEditMode(false)} title="Done (Esc)">
             <Check size={16} /> Done
           </button>

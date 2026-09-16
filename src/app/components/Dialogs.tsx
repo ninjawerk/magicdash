@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, Settings2 } from 'lucide-react';
+import { Download, FolderOpen, Loader2, Settings2, Upload } from 'lucide-react';
 import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
 import { hostApi } from '../lib/api';
 import { getClientPlugin, listClientPlugins } from '../lib/registry';
@@ -21,6 +21,8 @@ export function Dialogs() {
       return <PluginSettingsDialog pluginId={dialog.pluginId} onClose={close} />;
     case 'theme':
       return <ThemeDialog onClose={close} />;
+    case 'backup':
+      return <BackupDialog onClose={close} />;
     default:
       return null;
   }
@@ -304,6 +306,139 @@ function ThemeDialog({ onClose }: { onClose: () => void }) {
         <section>
           <h3 className="text-sm font-semibold mb-3 text-white/70">Grid</h3>
           <SchemaForm fields={GRID_FIELDS} value={grid} onChange={setGrid} api={api} />
+        </section>
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+interface BackupFile {
+  magicdash: 1;
+  exportedAt: string;
+  includesSecrets: boolean;
+  layout: DashboardLayout;
+  settings: Record<string, Record<string, unknown>>;
+  pluginFiles?: Record<string, string>;
+}
+
+function BackupDialog({ onClose }: { onClose: () => void }) {
+  const { reloadPluginSettings } = useStore();
+  const [dataDir, setDataDir] = useState<string>();
+  const [withSecrets, setWithSecrets] = useState(true);
+  const [file, setFile] = useState<{ name: string; data: BackupFile } | undefined>();
+  const [fileError, setFileError] = useState<string>();
+  const [restoreLayout, setRestoreLayout] = useState(true);
+  const [restoreSettings, setRestoreSettings] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string>();
+
+  useEffect(() => {
+    hostApi.health().then((h) => setDataDir(h.dataDir)).catch(() => undefined);
+  }, []);
+
+  const onPick = async (f: File | undefined) => {
+    setFile(undefined);
+    setFileError(undefined);
+    setResult(undefined);
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text()) as BackupFile;
+      if (data?.magicdash !== 1 || !data.layout?.widgets) throw new Error('Not a MagicDash backup file.');
+      setFile({ name: f.name, data });
+    } catch (e) {
+      setFileError((e as Error).message);
+    }
+  };
+
+  const restore = async () => {
+    if (!file) return;
+    if (!confirm(`Replace the current ${[restoreLayout && 'layout', restoreSettings && 'plugin settings'].filter(Boolean).join(' and ')} with "${file.name}"?`)) return;
+    setBusy(true);
+    try {
+      const r = await hostApi.importBackup(file.data, { layout: restoreLayout, settings: restoreSettings });
+      await reloadPluginSettings();
+      setResult(`Restored${r.layout ? ' layout' : ''}${r.settings.length ? ` · settings for ${r.settings.length} plugin${r.settings.length === 1 ? '' : 's'}` : ''}${r.files ? ` · ${r.files} plugin file${r.files === 1 ? '' : 's'}` : ''}.`);
+      setFile(undefined);
+    } catch (e) {
+      setFileError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const d = file?.data;
+  return (
+    <Modal title="Backup" subtitle="Export everything to a file, or restore from one." onClose={onClose} width={600}>
+      <div className="space-y-7">
+        <section className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
+          <div className="flex items-start gap-3">
+            <FolderOpen size={18} className="mt-0.5 shrink-0 text-white/50" />
+            <div className="min-w-0">
+              <p className="font-medium">Where your data lives</p>
+              <p className="mt-1 text-white/60">
+                Everything is stored on the server in <code className="font-mono text-xs text-white/90 select-all break-all">{dataDir ?? '…'}</code>
+              </p>
+              <ul className="mt-2 space-y-0.5 text-xs text-white/50">
+                <li>
+                  <code className="font-mono">layout.json</code> — tiles, their settings, theme and grid
+                </li>
+                <li>
+                  <code className="font-mono">settings.json</code> — plugin-wide settings, including tokens and API keys
+                </li>
+                <li>
+                  <code className="font-mono">plugins/&lt;id&gt;/</code> — plugin files such as the Google sign-in tokens
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="text-sm font-semibold mb-2 text-white/70">Export</h3>
+          <label className="flex items-start gap-3 cursor-pointer mb-3">
+            <input type="checkbox" className="mt-1 accent-[var(--accent)]" checked={withSecrets} onChange={(e) => setWithSecrets(e.target.checked)} />
+            <span className="text-sm">
+              Include secrets (tokens, API keys, Google sign-in)
+              <span className="block text-xs text-white/45">Needed for a full restore on a new Pi. Keep the file private.</span>
+            </span>
+          </label>
+          <a className="btn btn-primary" href={hostApi.exportUrl(withSecrets)} download>
+            <Download size={14} /> Download backup
+          </a>
+        </section>
+
+        <section>
+          <h3 className="text-sm font-semibold mb-2 text-white/70">Import</h3>
+          <label className="btn btn-default cursor-pointer">
+            <Upload size={14} /> Choose backup file…
+            <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => onPick(e.target.files?.[0])} />
+          </label>
+          {fileError && <p className="mt-2 text-xs text-red-300">{fileError}</p>}
+          {result && <p className="mt-2 text-xs text-emerald-300">{result}</p>}
+          {d && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm space-y-3">
+              <div>
+                <p className="font-medium truncate">{file!.name}</p>
+                <p className="text-xs text-white/50">
+                  Exported {new Date(d.exportedAt).toLocaleString()} · {d.layout.widgets.length} tiles · {Object.keys(d.settings ?? {}).length} plugins configured ·{' '}
+                  {d.includesSecrets ? 'includes secrets' : 'no secrets (yours are kept)'}
+                </p>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" className="accent-[var(--accent)]" checked={restoreLayout} onChange={(e) => setRestoreLayout(e.target.checked)} />
+                <span>Restore layout, tiles and theme</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" className="accent-[var(--accent)]" checked={restoreSettings} onChange={(e) => setRestoreSettings(e.target.checked)} />
+                <span>Restore plugin settings{d.includesSecrets ? ' and sign-ins' : ''}</span>
+              </label>
+              <button className="btn btn-danger" disabled={busy || (!restoreLayout && !restoreSettings)} onClick={restore}>
+                {busy && <Loader2 className="animate-spin" size={14} />} Restore — replaces current data
+              </button>
+            </div>
+          )}
         </section>
       </div>
     </Modal>
