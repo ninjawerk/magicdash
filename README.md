@@ -28,7 +28,10 @@ Home Assistant, photos, quotes — and anything else you write in a few dozen li
 | 🏠 **Home Assistant** | Live entity states over websocket, tap to toggle lights/switches/covers/locks, tiles / list / big-value layouts. |
 | 🖼️ **Random image** | Slideshow by subject from free providers (Wikimedia Commons, NASA, Cleveland Museum of Art, LoremFlickr — no key; Unsplash, Pexels, Pixabay with a free key), a folder on the Pi, or your own URLs. Ken Burns effect. |
 | 💬 **Motivational quotes** | Bundled offline set, your own list, or ZenQuotes. |
-| 🕰️ **Clock** | Big time & date, optional seconds / time zone. |
+| 🕰️ **Clock** | Big time & date, optional seconds / time zone, blinking colon. |
+| 📰 **News headlines** | Any RSS/Atom feeds — rotating big headline with the article image as background, or a list. |
+| 📖 **Word of the day** | Merriam-Webster or Wiktionary, with pronunciation and definition. |
+| 🔳 **QR code** | Guest Wi-Fi login, a link or any text as a scannable code. |
 
 ## Quick start (development)
 

@@ -17,7 +17,7 @@ import express from 'express';
 import { broadcast } from './events';
 import { PLUGINS_DIR, allPlugins } from './plugins';
 
-export const BUNDLED_PLUGINS = new Set(['clock', 'google-calendar', 'home-assistant', 'quotes', 'random-image', 'weather']);
+export const BUNDLED_PLUGINS = new Set(['clock', 'google-calendar', 'home-assistant', 'quotes', 'random-image', 'weather', 'news', 'word-of-the-day', 'qr-code']);
 const RESERVED_IDS = new Set(['install', 'installed', 'rebuild', 'upload', '_template']);
 const ALLOWED_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.json', '.css', '.md', '.txt', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2']);
 const MAX_FILES = 200;
