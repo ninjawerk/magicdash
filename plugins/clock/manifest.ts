@@ -14,6 +14,17 @@ const manifest: PluginManifest = {
     { key: 'hour12', label: '12-hour clock', type: 'boolean', default: false },
     { key: 'seconds', label: 'Show seconds', type: 'boolean', default: false },
     { key: 'date', label: 'Show date', type: 'boolean', default: true },
+    { key: 'blink', label: 'Blink the colon every second', type: 'boolean', default: false },
+    {
+      key: 'align',
+      label: 'Alignment',
+      type: 'select',
+      default: 'center',
+      options: [
+        { label: 'Center', value: 'center' },
+        { label: 'Left', value: 'left' },
+      ],
+    },
     { key: 'timeZone', label: 'Time zone', type: 'string', placeholder: 'e.g. Europe/London (leave empty for system)', help: 'IANA zone name.' },
     { key: 'label', label: 'Label', type: 'string', placeholder: 'e.g. Home' },
   ],

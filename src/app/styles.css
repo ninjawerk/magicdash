@@ -110,6 +110,21 @@ body.hide-cursor * {
   border-color: rgba(255, 110, 110, 0.7);
 }
 
+/* Blinking clock colon: visible for the first half of every second, in step with the wall clock. */
+@keyframes colon-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.15;
+  }
+}
+.colon-blink {
+  animation: colon-blink 1s steps(1, end) infinite;
+}
+
 /* Fade for slideshows */
 @keyframes fade-in {
   from {

@@ -3,11 +3,14 @@ import RGL, { type Layout } from 'react-grid-layout';
 import { useStore } from '../lib/store';
 import { WidgetShell } from './WidgetShell';
 import { getClientPlugin } from '../lib/registry';
+import { applyRects, pushDown } from '../lib/layoutUtils';
 
 export function Dashboard() {
   const { layout, editMode, updateLayout, draggingRef } = useStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  // Incremented when a gesture is rejected so RGL re-syncs from the stored layout.
+  const [bounce, setBounce] = useState(0);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -45,48 +48,55 @@ export function Dashboard() {
 
   if (!layout || !grid) return null;
 
-  const onLayoutChange = (next: Layout[]) => {
+  /**
+   * Called when a drag or resize ends. `next` is RGL's layout, which may contain overlaps because we let the
+   * user drop onto other tiles. We keep the moved tile where the user put it, push anything it covers
+   * downward, and revert the whole gesture if that would overflow the screen.
+   */
+  const commit = (next: Layout[], actor: Layout) => {
     if (!editMode) return;
     updateLayout((l) => {
-      const byId = new Map(next.map((n) => [n.i, n]));
-      let changed = false;
-      const widgets = l.widgets.map((w) => {
-        const n = byId.get(w.id);
-        if (!n) return w;
-        if (n.x !== w.x || n.y !== w.y || n.w !== w.w || n.h !== w.h) {
-          changed = true;
-          return { ...w, x: n.x, y: n.y, w: n.w, h: n.h };
-        }
-        return w;
-      });
-      return changed ? { ...l, widgets } : l;
+      const rects = next.map((n) => ({ id: n.i, x: n.x, y: n.y, w: n.w, h: n.h }));
+      const resolved = pushDown(rects, actor.i, l.grid.rows);
+      if (!resolved) {
+        setBounce((b) => b + 1); // force RGL back to the stored layout
+        return l;
+      }
+      const widgets = applyRects(l.widgets, resolved);
+      return widgets === l.widgets || widgets.every((w, i) => w === l.widgets[i]) ? l : { ...l, widgets };
     });
   };
-
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden">
       {size.width > 0 && (
         <RGL
           className="layout"
           width={size.width}
+          key={bounce}
           layout={rglLayout}
+          style={{ height: size.height }}
           cols={grid.cols}
           rowHeight={rowHeight}
           maxRows={grid.rows}
           margin={[grid.gap, grid.gap]}
           containerPadding={[grid.padding, grid.padding]}
           compactType={null}
-          preventCollision
+          preventCollision={false}
           isBounded
           isDraggable={editMode}
           isResizable={editMode}
           draggableCancel=".no-drag"
           resizeHandles={['se']}
           onDragStart={() => (draggingRef.current = true)}
-          onDragStop={() => (draggingRef.current = false)}
+          onDragStop={(layout, _old, item) => {
+            draggingRef.current = false;
+            commit(layout, item);
+          }}
           onResizeStart={() => (draggingRef.current = true)}
-          onResizeStop={() => (draggingRef.current = false)}
-          onLayoutChange={onLayoutChange}
+          onResizeStop={(layout, _old, item) => {
+            draggingRef.current = false;
+            commit(layout, item);
+          }}
         >
           {layout.widgets.map((w) => (
             <div key={w.id}>
