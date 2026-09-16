@@ -17,7 +17,7 @@ export default defineConfig({
     port: 5173,
     host: true,
     proxy: {
-      '/api': { target: 'http://localhost:3210', changeOrigin: false },
+      '/api': { target: process.env.MAGICDASH_API ?? 'http://localhost:3210', changeOrigin: false },
     },
   },
   build: { outDir: 'dist', emptyOutDir: true },

@@ -44,6 +44,39 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
   // Incremented when a gesture is rejected so RGL re-syncs from the stored layout.
   const [bounce, setBounce] = useState(0);
 
+  // --- Hover-to-swap (like phone home screens): hold a dragged tile over another for a moment and they trade places.
+  const SWAP_DWELL_MS = 650;
+  const dragOrigin = useRef<{ id: string; x: number; y: number; w: number; h: number } | null>(null);
+  const hoverTarget = useRef<string | null>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [swapTarget, setSwapTargetState] = useState<string | null>(null);
+  const pendingSwap = useRef<string | null>(null);
+  const setSwapTarget = (id: string | null) => {
+    pendingSwap.current = id;
+    setSwapTargetState(id);
+  };
+  const clearHover = () => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = undefined;
+    hoverTarget.current = null;
+    setSwapTarget(null);
+  };
+  const onDrag = (_l: Layout[], _old: Layout, item: Layout) => {
+    const origin = dragOrigin.current;
+    if (!origin) return;
+    const cx = item.x + item.w / 2;
+    const cy = item.y + item.h / 2;
+    const target = screen.widgets.find((w) => w.id !== item.i && cx >= w.x && cx < w.x + w.w && cy >= w.y && cy < w.y + w.h);
+    // Hovering over our own original slot is not a swap.
+    const overOrigin = cx >= origin.x && cx < origin.x + origin.w && cy >= origin.y && cy < origin.y + origin.h;
+    const id = target && !overOrigin ? target.id : null;
+    if (id === hoverTarget.current) return;
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTarget.current = id;
+    setSwapTarget(null);
+    if (id) hoverTimer.current = setTimeout(() => setSwapTarget(id), SWAP_DWELL_MS);
+  };
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -85,12 +118,55 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
    * user drop onto other tiles. We keep the moved tile where the user put it, push anything it covers
    * downward, and revert the whole gesture if that would overflow the screen.
    */
+  /**
+   * Rects for collision resolution: stored positions for everyone (RGL displaces bystanders while a tile passes over
+   * them and we don't want that noise), with the actor's position taken from the gesture.
+   */
+  const rectsFor = (next: Layout[], actorId: string) => {
+    const cur = layout?.screens.find((s) => s.id === screen.id);
+    if (!cur) return undefined;
+    const moved = next.find((n) => n.i === actorId);
+    return cur.widgets.map((w) => (w.id === actorId && moved ? { id: w.id, x: moved.x, y: moved.y, w: moved.w, h: moved.h } : { id: w.id, x: w.x, y: w.y, w: w.w, h: w.h }));
+  };
+
+  /** Drop with a swap intent: dragged tile takes the target's slot, target takes the dragged tile's original slot. */
+  const commitSwap = (next: Layout[], actor: Layout, targetId: string): boolean => {
+    const origin = dragOrigin.current;
+    const cur = layout?.screens.find((s) => s.id === screen.id);
+    const target = cur?.widgets.find((w) => w.id === targetId);
+    if (!origin || !cur || !target) return false;
+    const rects = rectsFor(next, actor.i);
+    const a = rects?.find((r) => r.id === actor.i);
+    const t = rects?.find((r) => r.id === targetId);
+    if (!rects || !a || !t) return false;
+    a.x = target.x;
+    a.y = target.y;
+    t.x = origin.x;
+    t.y = origin.y;
+    // Keep both inside the grid.
+    const cols = layout!.grid.cols;
+    const rows = layout!.grid.rows;
+    a.x = Math.max(0, Math.min(a.x, cols - a.w));
+    t.x = Math.max(0, Math.min(t.x, cols - t.w));
+    if (a.y + a.h > rows || t.y + t.h > rows) return false;
+    const resolved = pushDown(rects, [actor.i, targetId], rows);
+    if (!resolved) return false;
+    updateLayout((l) => {
+      const c = l.screens.find((s) => s.id === screen.id);
+      if (!c) return l;
+      const widgets = applyRects(c.widgets, resolved);
+      return { ...l, screens: l.screens.map((s) => (s.id === screen.id ? { ...s, widgets } : s)) };
+    });
+    return true;
+  };
+
   const commit = (next: Layout[], actor: Layout) => {
     if (!editMode) return;
     updateLayout((l) => {
       const cur = l.screens.find((s) => s.id === screen.id);
       if (!cur) return l;
-      const rects = next.map((n) => ({ id: n.i, x: n.x, y: n.y, w: n.w, h: n.h }));
+      const moved = next.find((n) => n.i === actor.i);
+      const rects = cur.widgets.map((w) => (w.id === actor.i && moved ? { id: w.id, x: moved.x, y: moved.y, w: moved.w, h: moved.h } : { id: w.id, x: w.x, y: w.y, w: w.w, h: w.h }));
       const resolved = pushDown(rects, actor.i, l.grid.rows);
       if (!resolved) {
         setBounce((b) => b + 1); // force RGL back to the stored layout
@@ -122,9 +198,21 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
           isResizable={editMode && active}
           draggableCancel=".no-drag"
           resizeHandles={['se']}
-          onDragStart={() => (draggingRef.current = true)}
+          onDragStart={(_l, item) => {
+            draggingRef.current = true;
+            dragOrigin.current = { id: item.i, x: item.x, y: item.y, w: item.w, h: item.h };
+            clearHover();
+          }}
+          onDrag={onDrag}
           onDragStop={(layout, _old, item) => {
             draggingRef.current = false;
+            const target = swapTarget ?? pendingSwap.current;
+            clearHover();
+            if (target && commitSwap(layout, item, target)) {
+              dragOrigin.current = null;
+              return;
+            }
+            dragOrigin.current = null;
             commit(layout, item);
           }}
           onResizeStart={() => (draggingRef.current = true)}
@@ -133,11 +221,23 @@ function ScreenGrid({ screen, active }: { screen: Screen; active: boolean }) {
             commit(layout, item);
           }}
         >
-          {screen.widgets.map((w) => (
-            <div key={w.id} style={hidden.has(w.id) ? { visibility: 'hidden' } : undefined}>
-              <WidgetShell widget={w} screenId={screen.id} />
-            </div>
-          ))}
+          {screen.widgets.map((w) => {
+            // Preview: the swap target slides into the dragged tile's original slot.
+            let preview: React.CSSProperties | undefined;
+            if (swapTarget === w.id && dragOrigin.current) {
+              const colW = (size.width - grid.padding * 2 - grid.gap * (grid.cols - 1)) / grid.cols;
+              const dx = (dragOrigin.current.x - w.x) * (colW + grid.gap);
+              const dy = (dragOrigin.current.y - w.y) * (rowHeight + grid.gap);
+              preview = { transform: `translate(${dx}px, ${dy}px)`, transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)', zIndex: 25, position: 'relative' };
+            }
+            return (
+              <div key={w.id} style={hidden.has(w.id) ? { visibility: 'hidden' } : undefined}>
+                <div className={`h-full w-full ${swapTarget === w.id ? 'swap-target' : ''}`} style={preview ?? { transition: 'transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1)' }}>
+                  <WidgetShell widget={w} screenId={screen.id} />
+                </div>
+              </div>
+            );
+          })}
         </RGL>
       )}
     </div>

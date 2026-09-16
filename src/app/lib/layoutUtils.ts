@@ -17,12 +17,15 @@ export function collides(a: Rect, b: Rect): boolean {
  * pushed straight down (cascading). Tiles that weren't touched stay where they are.
  * Returns null when something would fall off the bottom of the grid — the caller should then revert.
  */
-export function pushDown(items: Rect[], actorId: string, rows: number): Rect[] | null {
-  const actor = items.find((i) => i.id === actorId);
-  if (!actor) return items;
-  const placed: Rect[] = [{ ...actor }];
+export function pushDown(items: Rect[], actorId: string | string[], rows: number): Rect[] | null {
+  const actorIds = Array.isArray(actorId) ? actorId : [actorId];
+  const actors = actorIds.map((id) => items.find((i) => i.id === id)).filter((a): a is Rect => !!a);
+  if (actors.length === 0) return items;
+  // Actors are fixed; if two actors overlap each other the arrangement is impossible.
+  for (let i = 0; i < actors.length; i++) for (let j = i + 1; j < actors.length; j++) if (collides(actors[i], actors[j])) return null;
+  const placed: Rect[] = actors.map((a) => ({ ...a }));
   const others = items
-    .filter((i) => i.id !== actorId)
+    .filter((i) => !actorIds.includes(i.id))
     .map((i) => ({ ...i }))
     .sort((a, b) => a.y - b.y || a.x - b.x);
   for (const it of others) {
