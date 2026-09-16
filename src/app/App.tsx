@@ -6,7 +6,10 @@ import { Toolbar } from './components/Toolbar';
 import { applyTheme, normalizeTheme } from './lib/themes';
 
 function Shell() {
-  const { layout, error } = useStore();
+  const { layout, error, editMode } = useStore();
+  // With several screens, the screen tabs (edit) / dots (view) live in a strip above the grid instead of over the tiles.
+  const multi = (layout?.screens.length ?? 0) > 1;
+  const topInset = multi ? (editMode ? 60 : 26) : 0;
 
   useEffect(() => {
     if (!layout) return;
@@ -30,7 +33,9 @@ function Shell() {
 
   return (
     <div className="relative h-full w-full">
-      <Dashboard />
+      <div className="absolute inset-x-0 bottom-0 transition-[top] duration-300" style={{ top: topInset }}>
+        <Dashboard />
+      </div>
       <Toolbar />
       <Dialogs />
     </div>
