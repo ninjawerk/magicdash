@@ -1,4 +1,4 @@
-import { ThemeDialog } from '../../components/Dialogs';
+import { ThemeDialog } from '../../components/ThemeDialog';
 export function AppearancePage() {
   return (
     <div className="surface rounded-2xl border border-white/10 p-6">

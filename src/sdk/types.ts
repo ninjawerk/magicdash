@@ -136,7 +136,34 @@ export interface WidgetInstance {
   config: Record<string, unknown>;
   /** Only show this tile inside the window (e.g. news 06:00–09:00 on weekdays). */
   schedule?: TimeWindow;
+  /** Per-tile look overrides (everything optional; the theme applies otherwise). */
+  look?: TileLook;
 }
+
+/** Overrides a single tile can make to the theme's tile styling. */
+export interface TileLook {
+  /** Any CSS background for the tile frame. */
+  background?: string;
+  /** CSS `border` shorthand, e.g. `2px dashed var(--accent)`. */
+  border?: string;
+  radius?: number;
+  /** Backdrop blur in px. */
+  blur?: number;
+  /** Hide the title bar on this tile even when the theme shows titles. */
+  hideTitle?: boolean;
+  /** Inner padding override in px. */
+  padding?: number;
+  /** Override the theme's tile shadow. */
+  shadow?: TileShadow;
+  /** Opacity 0–100. */
+  opacity?: number;
+}
+
+export type TileBorderStyle = 'hairline' | 'none' | 'solid' | 'dashed' | 'double' | 'glow' | 'neon' | 'gradient' | 'accent-top' | 'accent-left' | 'inset' | 'custom';
+export type TileShadow = 'none' | 'soft' | 'lifted' | 'hard' | 'glow';
+export type BackgroundEffect = 'none' | 'aurora' | 'stars' | 'grain' | 'vignette' | 'dots' | 'grid' | 'rays' | 'bokeh' | 'scanlines';
+export type TitleStyle = 'caps' | 'normal' | 'bold' | 'pill' | 'underline';
+export type IconTint = 'auto' | 'accent' | 'fg' | 'cool' | 'warm';
 
 export interface GridSettings {
   cols: number;
@@ -248,6 +275,61 @@ export interface DashboardLayout {
     warm: string;
     /** Id of the preset this theme was based on, if any. */
     preset?: string;
+
+    // --- Background (all optional; layered over `background`) ---
+    /** Wallpaper URL (absolute, or `/api/wallpapers/<file>` for uploads). `{date}` is replaced with today's date. */
+    backgroundImage?: string;
+    backgroundFit?: 'cover' | 'contain' | 'tile';
+    /** 0–95 % dark (or light, on light themes) scrim over the wallpaper so text stays readable. */
+    backgroundOverlay?: number;
+    /** Blur the wallpaper (px). */
+    backgroundBlur?: number;
+    /** Decorative layer drawn between the background and the tiles. */
+    backgroundEffect?: BackgroundEffect;
+
+    // --- Tiles ---
+    tileBorderStyle?: TileBorderStyle;
+    /** px, for the solid/dashed/double/accent styles. */
+    tileBorderWidth?: number;
+    /** Border colour; empty = derived from the text colour. */
+    tileBorderColor?: string;
+    /** 0–100 %. */
+    tileBorderOpacity?: number;
+    /** Raw CSS `border` shorthand, used when tileBorderStyle is `custom`. */
+    tileBorderCss?: string;
+    tileShadow?: TileShadow;
+    /** Backdrop blur behind translucent tiles (px). 0 is cheapest on a Pi. */
+    tileBlur?: number;
+    /** Inner tile padding in px (plugins read it as --tile-pad). */
+    tilePadding?: number;
+
+    // --- Text ---
+    /** Font preset id, or any CSS family name (Google Fonts are fetched by name). */
+    fontFamily?: string;
+    /** Monospace preset id or family name. */
+    fontMono?: string;
+    /** Font used for big numbers and headings (clock, temperatures). Defaults to fontFamily. */
+    fontDisplay?: string;
+    /** 0.7–1.5, scales all text and spacing. */
+    fontScale?: number;
+    /** Base weight for body text. */
+    fontWeight?: 300 | 400 | 500 | 600;
+    /** Letter spacing for body text in em (e.g. 0.02). */
+    letterSpacing?: number;
+    titleStyle?: TitleStyle;
+    titleAlign?: 'left' | 'center' | 'right';
+    /** Title colour: muted (default), accent or text. */
+    titleColor?: 'muted' | 'accent' | 'fg';
+
+    // --- Icons ---
+    /** Stroke width for line icons, 1–3. */
+    iconStroke?: number;
+    /** Tint all icons with one token, or leave them as each plugin colours them. */
+    iconTint?: IconTint;
+    /** Duotone: fill icons with a translucent wash of their colour. */
+    iconFill?: boolean;
+    /** 0.8–1.4 visual scale for icons. */
+    iconScale?: number;
   };
 }
 

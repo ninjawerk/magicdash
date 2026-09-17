@@ -235,7 +235,7 @@ server.registerTool('release_attention', { description: 'Release an attention lo
 server.registerTool(
   'set_theme',
   {
-    description: 'Set theme tokens (any subset): background (CSS), accent, fg, surface, cool, warm, tileBackground, tileRadius, dark, showTitles, preset (id of a built-in preset).',
+    description: 'Set theme tokens (any subset). Colours: background (CSS), accent, fg, surface, cool, warm, tileBackground, dark. Wallpaper: backgroundImage (URL, {date} token allowed), backgroundFit (cover|contain|tile), backgroundOverlay (0-95), backgroundBlur (px), backgroundEffect (none|aurora|stars|grain|vignette|dots|grid|rays|bokeh|scanlines). Tiles: tileRadius, tileBorderStyle (hairline|none|solid|dashed|double|glow|neon|gradient|accent-top|accent-left|inset|custom), tileBorderWidth, tileBorderColor, tileBorderOpacity, tileBorderCss, tileShadow (none|soft|lifted|hard|glow), tileBlur, tilePadding, showTitles. Text: fontFamily/fontMono/fontDisplay (preset id or any Google Font name), fontScale (0.7-1.5), fontWeight (300-600), letterSpacing (em), titleStyle (caps|normal|bold|pill|underline), titleAlign, titleColor (muted|accent|fg). Icons: iconStroke (1-3), iconTint (auto|accent|fg|cool|warm), iconFill (bool), iconScale (0.8-1.4). preset = id of a built-in preset.',
     inputSchema: { theme: z.record(z.string(), z.unknown()) },
   },
   async ({ theme }) => {

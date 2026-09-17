@@ -106,6 +106,10 @@ export const hostApi = {
       json<{ ok: true; id: string; name?: string; version?: string; files: number; replaced: boolean; reviewed: boolean; prod: boolean }>,
     ),
   exportUrl: (secrets: boolean) => `/api/export?secrets=${secrets ? 1 : 0}`,
+  listWallpapers: () => fetch('/api/wallpapers').then(json<Array<{ file: string; url: string; bytes: number }>>),
+  uploadWallpaper: (file: File) =>
+    fetch(`/api/wallpapers?name=${encodeURIComponent(file.name)}`, { method: 'POST', body: file, headers: { 'content-type': file.type || 'application/octet-stream' } }).then(json<{ file: string; url: string; bytes: number }>),
+  deleteWallpaper: (file: string) => fetch(`/api/wallpapers/${encodeURIComponent(file)}`, { method: 'DELETE' }).then(json<{ ok: true }>),
   importBackup: (backup: unknown, opts: { layout: boolean; settings: boolean }) =>
     fetch('/api/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ backup, ...opts }) }).then(
       json<{ ok: true; layout: boolean; settings: string[]; files: number }>,

@@ -222,8 +222,26 @@ German and Dutch; Rahu Kaala in English, Tamil, Sinhala and Hindi. Plugins read 
 
 ## Themes & grid
 
-Edit mode → **Theme**. Pick a preset card, or open *Customise colours…* to set the background (any CSS value,
-including `url(...)` for a wallpaper), accent, text and tile colours, corner radius and whether tile titles show.
+**Appearance** (edit toolbar → *Theme*, or *Admin → Appearance*) is a small design studio:
+
+- **Presets** — 26 looks in four groups (dark, light, bold, minimal): Midnight, Pure black, Nord, Dracula, Solarized, Forest,
+  Ocean, Rosé, Aurora, Night sky, Glass, Neon, Cyberpunk, Terminal, Brutalist, Newspaper, Retro, Sunset, Paper, Daylight,
+  Pastel, Mint, Monochrome, Blueprint, Zen, Lavender. Pick one, then change anything; the preset detaches automatically.
+- **Colours** — accent palettes, plus every token (accent, text, cool/warm tones, tile and dialog backgrounds).
+- **Background** — a gradient gallery, a gradient builder (linear / radial / conic / mesh), wallpapers (upload your own,
+  paste a URL, or a "photo of the day" — `{date}` in a URL changes it daily), a readability scrim and blur, and an effect
+  layer: vignette, film grain, dot grid, blueprint grid, scanlines, starfield, light rays, bokeh, aurora.
+- **Tiles & borders** — hairline, none, solid, dashed, double, inset, glow, neon, gradient ring, accent top/left bar, or your
+  own CSS `border`; width, colour and opacity; shadow (soft, lifted, hard offset, accent glow); frosted-glass blur; corner
+  radius; inner padding.
+- **Text** — 30 fonts (sans, rounded, serif, display, mono) or any Google Font by name; separate display font for the clock
+  and big numbers; size, weight, letter spacing; tile title style (small caps, normal, bold, pill, underlined), alignment
+  and colour.
+- **Icons** — line weight, size, tint (accent / text / cool / warm) and a duotone fill.
+- **Per tile** — each tile's settings have a *Look* section to override its background, border, radius, blur, shadow,
+  opacity or hide its title.
+
+Everything previews live and is stored in `layout.json` under `theme`, so it exports and imports with the rest.
 The same dialog sets the grid: columns, rows, gap and screen padding. The grid always fills the screen exactly,
 so more rows just means finer placement.
 

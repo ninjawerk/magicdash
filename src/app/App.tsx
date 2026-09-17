@@ -4,6 +4,7 @@ import { Dialogs } from './components/Dialogs';
 import { Toolbar } from './components/Toolbar';
 import { AdminApp } from './admin/AdminApp';
 import { DisplayLayer, Toasts } from './components/Overlays';
+import { BackgroundLayer } from './components/BackgroundLayer';
 
 function Shell() {
   const { layout, error, editMode } = useStore();
@@ -29,6 +30,7 @@ function Shell() {
 
   return (
     <div className="relative h-full w-full">
+      <BackgroundLayer />
       <div className="absolute inset-x-0 bottom-0 transition-[top] duration-300" style={{ top: topInset }}>
         <Dashboard />
       </div>

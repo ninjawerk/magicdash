@@ -15,6 +15,7 @@ import { registerUpdateRoutes } from './update';
 import { registerNotifyRoutes } from './notify';
 import { reevaluateDisplay, registerDisplayRoutes, startDisplay } from './display';
 import { loadDevices, registerDeviceRoutes, resolveDeviceId } from './devices';
+import { registerWallpaperRoutes } from './wallpapers';
 import { HOST_VERSION } from './version';
 import { SDK_VERSION } from '../src/sdk/types';
 
@@ -228,6 +229,7 @@ async function main() {
   registerNotifyRoutes(app);
   registerDisplayRoutes(app);
   registerDeviceRoutes(app);
+  registerWallpaperRoutes(app);
   await startDisplay();
 
   // --- Plugin routers -----------------------------------------------------------
