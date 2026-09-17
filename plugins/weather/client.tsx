@@ -233,7 +233,7 @@ function WeatherWidget({ config, api, size, openSettings, editMode, setBackgroun
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start leading-none">
-              <span className="font-bold tracking-tight tabular" style={{ fontSize: Math.min(compact ? 40 : 58, W / 5.5), color: curColor }}>
+              <span className="font-display font-bold tracking-tight tabular" style={{ fontSize: Math.min(compact ? 40 : 58, W / 5.5), color: curColor }}>
                 {Math.round(cur.temp)}
               </span>
               <span className="mt-1 text-lg font-semibold text-white/50">{deg}</span>

@@ -1,6 +1,7 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Settings2, Trash2, AlertTriangle, Puzzle } from 'lucide-react';
-import { defaultsFor, type WidgetInstance } from '@sdk';
+import { defaultsFor, type TileLook, type WidgetInstance } from '@sdk';
+import { withAlpha } from '../lib/themes';
 import { getClientPlugin } from '../lib/registry';
 import { useStore } from '../lib/store';
 import { ConfirmButton } from './ConfirmButton';
@@ -26,6 +27,23 @@ class ErrorBoundary extends Component<{ children: ReactNode; resetKey: string },
     }
     return this.props.children;
   }
+}
+
+/** Inline style for a tile's per-instance look overrides. */
+function lookToStyle(look: TileLook | undefined, accent: string): React.CSSProperties | undefined {
+  if (!look) return undefined;
+  const st: React.CSSProperties = {};
+  if (look.background) st.background = look.background;
+  if (look.border) st.border = look.border;
+  if (look.radius !== undefined) st.borderRadius = look.radius;
+  if (look.blur !== undefined) st.backdropFilter = look.blur ? `blur(${look.blur}px)` : 'none';
+  if (look.opacity !== undefined) st.opacity = Math.max(0.1, Math.min(1, look.opacity / 100));
+  if (look.padding !== undefined) (st as Record<string, unknown>)['--tile-pad'] = `${look.padding}px`;
+  if (look.shadow) {
+    st.boxShadow =
+      look.shadow === 'none' ? 'none' : look.shadow === 'soft' ? '0 10px 30px -18px rgba(0,0,0,0.5)' : look.shadow === 'lifted' ? '0 18px 50px -20px rgba(0,0,0,0.55), 0 2px 6px -2px rgba(0,0,0,0.25)' : look.shadow === 'hard' ? '6px 6px 0 0 rgba(0,0,0,0.9)' : `0 0 40px -8px ${withAlpha(accent, 45)}`;
+  }
+  return Object.keys(st).length ? st : undefined;
 }
 
 export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; screenId: string }) {
@@ -64,16 +82,17 @@ export function WidgetShell({ widget, screenId }: { widget: WidgetInstance; scre
     return () => ro.disconnect();
   }, []);
 
-  const showTitle = layout?.theme.showTitles && !plugin?.manifest.frameless;
+  const showTitle = layout?.theme.showTitles && !plugin?.manifest.frameless && !widget.look?.hideTitle;
+  const lookStyle = useMemo(() => lookToStyle(widget.look, layout?.theme.accent ?? '#7c9cff'), [widget.look, layout?.theme.accent]);
   // Manifest defaults fill in anything the tile hasn't set explicitly.
   const config = useMemo(() => ({ ...defaultsFor(plugin?.manifest.widgetConfig), ...widget.config }), [plugin, widget.config]);
   const title = widget.title ?? plugin?.manifest.name ?? widget.pluginId;
 
   return (
-    <div className={`tile h-full w-full ${editMode ? 'editing' : ''} ${alert ? 'alert' : ''}`} data-widget-id={widget.id}>
+    <div className={`tile h-full w-full ${editMode ? 'editing' : ''} ${alert ? 'alert' : ''}`} data-widget-id={widget.id} style={lookStyle}>
       {background && <div className="pointer-events-none absolute inset-0" style={{ background }} />}
       {showTitle && (
-        <div className="relative flex items-center justify-between px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <div className="tile-title">
           <span className="truncate">{title}</span>
         </div>
       )}

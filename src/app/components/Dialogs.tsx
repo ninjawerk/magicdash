@@ -2,17 +2,15 @@ import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, Download, ExternalLink, FolderOpen, Loader2, PackagePlus, Plus, RefreshCw, Search, Settings2, ShieldAlert, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { subscribeEvents } from '@sdk/client';
 import { useT } from '@sdk/i18n';
-import { defaultsFor, type ConfigField, type DashboardLayout } from '@sdk';
+import { defaultsFor, type ConfigField, type DashboardLayout, type TileLook } from '@sdk';
 import { hostApi } from '../lib/api';
 import { getClientPlugin, listClientPlugins } from '../lib/registry';
 import { useStore } from '../lib/store';
 import { Modal } from './Modal';
 import { SchemaForm } from './SchemaForm';
-import { THEME_PRESETS, applyTheme, normalizeTheme, stripPreset, type Theme } from '../lib/themes';
-import { LocationPicker } from './LocationPicker';
+import { ThemeDialog, LOCALE_FIELDS } from './ThemeDialog';
 import { ConfirmButton } from './ConfirmButton';
-import type { DashboardContext } from '@sdk';
-import { Check } from 'lucide-react';
+export { LOCALE_FIELDS };
 
 export function Dialogs() {
   const { dialog, setDialog } = useStore();
@@ -97,6 +95,7 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
   const plugin = widget ? getClientPlugin(widget.pluginId) : undefined;
   const [draft, setDraft] = useState<Record<string, unknown>>({ ...defaultsFor(plugin?.manifest.widgetConfig), ...(widget?.config ?? {}) });
   const [title, setTitle] = useState(widget?.title ?? '');
+  const [look, setLook] = useState<Record<string, unknown>>({ ...(widget?.look ?? {}) });
   const [sched, setSched] = useState<Record<string, unknown>>({
     mode: widget?.schedule?.from ? 'window' : 'always',
     from: widget?.schedule?.from,
@@ -116,7 +115,8 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
         : days.length && days.length < 7
           ? { days }
           : undefined;
-    updateWidget(widget.id, { config: draft, title: title.trim() || undefined, schedule });
+    const cleaned = Object.fromEntries(Object.entries(look).filter(([, v]) => v !== undefined && v !== '' && v !== false && v !== null)) as TileLook;
+    updateWidget(widget.id, { config: draft, title: title.trim() || undefined, schedule, look: Object.keys(cleaned).length ? cleaned : undefined });
     onClose();
   };
 
@@ -148,6 +148,11 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
         </div>
         <SchemaForm fields={fields} value={draft} onChange={setDraft} api={apiFor(plugin.manifest.id)} customFields={plugin.customFields} />
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-white/50">Look</h3>
+          <p className="mb-3 text-xs text-white/45">Overrides for this tile only. Leave empty to follow the theme.</p>
+          <SchemaForm fields={LOOK_FIELDS} value={look} onChange={setLook} api={apiFor(plugin.manifest.id)} />
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Visibility</h3>
           <SchemaForm fields={SCHEDULE_FIELDS} value={sched} onChange={setSched} api={apiFor(plugin.manifest.id)} />
         </div>
@@ -155,6 +160,16 @@ export function WidgetSettingsDialog({ widgetId, onClose }: { widgetId: string; 
     </Modal>
   );
 }
+
+const LOOK_FIELDS: ConfigField[] = [
+  { key: 'background', label: 'Tile background', type: 'string', placeholder: 'e.g. linear-gradient(135deg, var(--accent), transparent)', help: 'Any CSS background. Tokens: var(--accent) var(--cool) var(--warm) var(--fg) var(--tile-bg).' },
+  { key: 'border', label: 'Border', type: 'string', placeholder: 'e.g. 2px solid var(--accent)', help: 'CSS border shorthand, or "none".' },
+  { key: 'radius', label: 'Corner radius', type: 'number', min: 0, max: 60, unit: 'px' },
+  { key: 'shadow', label: 'Shadow', type: 'select', options: [{ value: 'none', label: 'None' }, { value: 'soft', label: 'Soft' }, { value: 'lifted', label: 'Lifted' }, { value: 'hard', label: 'Hard offset' }, { value: 'glow', label: 'Accent glow' }] },
+  { key: 'blur', label: 'Frosted blur', type: 'number', min: 0, max: 40, unit: 'px' },
+  { key: 'opacity', label: 'Opacity', type: 'number', min: 10, max: 100, step: 5, unit: '%' },
+  { key: 'hideTitle', label: 'Hide the title on this tile', type: 'boolean' },
+];
 
 const DAY_OPTIONS = [
   { label: 'Mon', value: '1' },
@@ -250,182 +265,6 @@ export function PluginSettingsDialog({ pluginId, onClose }: { pluginId: string; 
 
 // ---------------------------------------------------------------------------
 
-const THEME_FIELDS: ConfigField[] = [
-  { key: 'background', label: 'Background', type: 'textarea', rows: 2, help: 'Any CSS background: a color, gradient or url(...).' },
-  { key: 'accent', label: 'Accent color', type: 'color' },
-  { key: 'fg', label: 'Text color', type: 'color' },
-  { key: 'cool', label: 'Cool tone', type: 'color', help: 'Used for cold temperatures, water, "off" states.' },
-  { key: 'warm', label: 'Warm tone', type: 'color', help: 'Used for heat, sun, "on" states.' },
-  { key: 'tileBackground', label: 'Tile background', type: 'string', help: 'e.g. rgba(255,255,255,0.05)' },
-  { key: 'surface', label: 'Dialog & toolbar background', type: 'color' },
-  { key: 'tileRadius', label: 'Tile corner radius', type: 'number', min: 0, max: 60, unit: 'px' },
-  { key: 'dark', label: 'Dark theme (affects form controls)', type: 'boolean' },
-  { key: 'showTitles', label: 'Show tile titles', type: 'boolean' },
-];
-
-function PresetCard({ preset, active, onPick }: { preset: (typeof THEME_PRESETS)[number]; active: boolean; onPick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      className={`group relative overflow-hidden rounded-xl border text-left transition ${active ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40' : 'border-white/10 hover:border-white/30'}`}
-      style={{ background: preset.background, color: preset.fg }}
-    >
-      <div className="flex gap-1.5 p-3 pb-2">
-        <div className="h-9 flex-1 rounded-md" style={{ background: preset.tileBackground, border: `1px solid ${preset.fg}22`, borderRadius: Math.min(10, preset.tileRadius / 2) }}>
-          <div className="m-2 h-1.5 w-1/2 rounded-full" style={{ background: preset.accent }} />
-        </div>
-        <div className="h-9 w-9 rounded-md" style={{ background: preset.tileBackground, border: `1px solid ${preset.fg}22`, borderRadius: Math.min(10, preset.tileRadius / 2) }} />
-      </div>
-      <div className="px-3 pb-2.5">
-        <div className="text-sm font-semibold leading-tight">{preset.name}</div>
-        <div className="text-[11px] opacity-60 leading-snug">{preset.description}</div>
-      </div>
-      {active && (
-        <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full" style={{ background: preset.accent, color: '#0b0f17' }}>
-          <Check size={12} strokeWidth={3} />
-        </span>
-      )}
-    </button>
-  );
-}
-export const LOCALE_FIELDS: ConfigField[] = [
-  {
-    key: 'locale',
-    label: 'Language & region',
-    type: 'select',
-    default: '',
-    options: [
-      { label: 'Browser default', value: '' },
-      { label: 'English (UK)', value: 'en-GB' },
-      { label: 'English (US)', value: 'en-US' },
-      { label: 'Deutsch', value: 'de' },
-      { label: 'Nederlands', value: 'nl' },
-      { label: 'Français', value: 'fr' },
-      { label: 'Español', value: 'es' },
-      { label: 'தமிழ் (Tamil)', value: 'ta' },
-      { label: 'සිංහල (Sinhala)', value: 'si' },
-      { label: 'हिन्दी (Hindi)', value: 'hi' },
-    ],
-    help: 'Dates, times and every translated string follow this. Host strings ship in English, German, Dutch, French and Spanish; plugins bring their own.',
-  },
-];
-const GRID_FIELDS: ConfigField[] = [
-  { key: 'cols', label: 'Columns', type: 'number', min: 4, max: 48 },
-  { key: 'rows', label: 'Rows', type: 'number', min: 2, max: 32, help: 'The grid always fills the screen; more rows = finer control.' },
-  { key: 'gap', label: 'Gap between tiles', type: 'number', min: 0, max: 60, unit: 'px' },
-  { key: 'padding', label: 'Screen padding', type: 'number', min: 0, max: 120, unit: 'px' },
-];
-
-export function ThemeDialog({ onClose }: { onClose: () => void }) {
-  const { layout, updateLayout, apiFor } = useStore();
-  const original = normalizeTheme(layout?.theme);
-  const [theme, setTheme] = useState<Record<string, unknown>>({ ...original });
-  const [grid, setGrid] = useState<Record<string, unknown>>({ ...(layout?.grid ?? {}) });
-  const [loc, setLoc] = useState<Record<string, unknown>>({ locale: layout?.locale ?? '' });
-  const [ctx, setCtx] = useState<DashboardContext>({ ...(layout?.context ?? {}) });
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const api = apiFor('$host');
-
-  // Live preview while the dialog is open; revert on cancel.
-  useEffect(() => {
-    applyTheme(normalizeTheme(theme as Partial<Theme>));
-  }, [theme]);
-  const cancel = () => {
-    applyTheme(original);
-    onClose();
-  };
-  const pick = (id: string) => {
-    const p = THEME_PRESETS.find((x) => x.id === id);
-    if (p) setTheme({ ...stripPreset(p), showTitles: theme.showTitles ?? p.showTitles });
-  };
-  const changeField = (next: Record<string, unknown>) => {
-    // Manual edits detach from the preset unless they only touch showTitles.
-    const onlyTitles = Object.keys(next).every((k) => k === 'showTitles' || next[k] === theme[k]);
-    setTheme(onlyTitles ? next : { ...next, preset: undefined });
-  };
-  const save = () => {
-    updateLayout((l) => ({
-      ...l,
-      theme: normalizeTheme({ ...l.theme, ...(theme as unknown as DashboardLayout['theme']) }),
-      grid: { ...l.grid, ...(grid as unknown as DashboardLayout['grid']) },
-      locale: (loc.locale as string) || undefined,
-      context: { ...ctx, name: ctx.name?.trim() || undefined },
-    }));
-    onClose();
-  };
-  return (
-    <Modal
-      title="Appearance & grid"
-      subtitle="Pick a theme, or fine-tune every colour. Changes preview live."
-      onClose={cancel}
-      width={720}
-      footer={
-        <>
-          <button className="btn btn-default" onClick={cancel}>
-            Cancel
-          </button>
-          <button className="btn btn-primary" onClick={save}>
-            Save
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-8">
-        <section>
-          <h3 className="text-sm font-semibold mb-3 text-white/70">Theme</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {THEME_PRESETS.map((p) => (
-              <PresetCard key={p.id} preset={p} active={theme.preset === p.id} onPick={() => pick(p.id)} />
-            ))}
-          </div>
-          <button type="button" className="btn btn-ghost mt-3 text-xs" onClick={() => setShowAdvanced((v) => !v)}>
-            {showAdvanced ? 'Hide' : 'Customise colours…'}
-          </button>
-          {showAdvanced && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-              <SchemaForm fields={THEME_FIELDS} value={theme} onChange={changeField} api={api} />
-            </div>
-          )}
-          {!showAdvanced && (
-            <div className="mt-2">
-              <SchemaForm fields={THEME_FIELDS.filter((f) => f.key === 'showTitles')} value={theme} onChange={changeField} api={api} />
-            </div>
-          )}
-        </section>
-        <section>
-          <h3 className="text-sm font-semibold mb-3 text-white/70">Grid</h3>
-          <SchemaForm fields={GRID_FIELDS} value={grid} onChange={setGrid} api={api} />
-        </section>
-        <section>
-          <h3 className="text-sm font-semibold mb-1 text-white/70">Dashboard</h3>
-          <p className="mb-3 text-xs text-white/45">Shared with every tile: plugins use these unless a tile sets its own (weather, Rahu Kaala, greetings…).</p>
-          <div className="space-y-4">
-            <div>
-              <label className="label">Location</label>
-              <LocationPicker value={ctx.location} onChange={(location) => setCtx({ ...ctx, location })} />
-            </div>
-            <div>
-              <label className="label">Your name</label>
-              <input className="input" placeholder="e.g. Deshan" value={ctx.name ?? ''} onChange={(e) => setCtx({ ...ctx, name: e.target.value })} />
-            </div>
-            <div>
-              <label className="label">Units</label>
-              <select className="input" value={ctx.units ?? 'metric'} onChange={(e) => setCtx({ ...ctx, units: e.target.value as DashboardContext['units'] })}>
-                <option value="metric">Metric (°C, km/h)</option>
-                <option value="imperial">Imperial (°F, mph)</option>
-              </select>
-            </div>
-          </div>
-        </section>
-        <section>
-          <h3 className="text-sm font-semibold mb-3 text-white/70">Language</h3>
-          <SchemaForm fields={LOCALE_FIELDS} value={loc} onChange={setLoc} api={api} />
-        </section>
-      </div>
-    </Modal>
-  );
-}
 
 // ---------------------------------------------------------------------------
 

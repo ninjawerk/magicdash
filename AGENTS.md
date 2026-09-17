@@ -49,8 +49,11 @@ function Widget({ instanceId, config, settings, size, editMode, api, openSetting
 - `size` = `{ w, h }` grid units + `{ width, height }` px: scale typography and decide which sections fit.
 - `setAlert(true)` turns the tile red/pulsing; `setBackground(css)` paints the whole tile incl. title bar.
 - Hooks: `usePluginQuery(api, path, { query, refreshMs, enabled })`, `usePluginEvent`, `useNow`, `useRotation`; helpers `formatDuration`, `formatTime`.
-- Styling: Tailwind classes; theme tokens `var(--accent) --fg --cool --warm --surface --tile-bg --tile-radius`. Use `text-white/NN` for
+- Styling: Tailwind classes; theme tokens `var(--accent) --fg --cool --warm --surface --tile-bg --tile-radius --tile-pad`. Use `text-white/NN` for
   hierarchy (white is remapped to the theme text colour). Never hard-code blues/yellows for hot/cold — use `--cool/--warm`.
+  Fonts follow the theme automatically (`font-sans`/`font-mono`); add the `font-display` class to hero numbers (clock, temperature)
+  so they pick up the theme's display font. Lucide icons inherit the theme's stroke width, tint and duotone fill — don't override
+  `strokeWidth` unless the icon is decorative.
 
 ## Server contract
 

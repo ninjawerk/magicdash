@@ -42,7 +42,7 @@ function ClockWidget({ config, size, locale }: WidgetProps<Config>) {
   return (
     <div className={`flex h-full w-full flex-col px-6 ${alignCls} ${valignCls}`}>
       {config.label && <div className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40 mb-1">{config.label}</div>}
-      <div className="flex items-baseline gap-2 leading-none font-bold tracking-tight tabular" style={{ fontSize }}>
+      <div className="font-display flex items-baseline gap-2 leading-none font-bold tracking-tight tabular" style={{ fontSize }}>
         <span>
           {timeParts.map((p, i) =>
             p.type === 'literal' ? (

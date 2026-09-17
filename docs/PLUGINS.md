@@ -202,6 +202,14 @@ Tailwind v4 utility classes are available. The host sets CSS variables you can l
 temperatures, on/off, water/sun instead of hard-coded blues and yellows), `var(--surface)`, `var(--tile-bg)`, `var(--tile-radius)`. Tiles are dark; use white text with opacity for hierarchy.
 Add `tabular` to numbers that tick so they don't jitter. Fonts: Inter (body), JetBrains Mono (`font-mono`).
 
+Other tokens the host sets from the theme: `--tile-bg`, `--tile-radius`, `--tile-pad` (the user's preferred inner padding —
+use it as `padding: var(--tile-pad)` on your root element if you want to honour it), `--font-sans`, `--font-mono` and
+`--font-display`. Add the `font-display` class to big numbers so the theme's display font (which may differ from the body
+font) applies. Icons from `lucide-react` are restyled globally (stroke width, tint, duotone fill, scale) by the theme's
+*Icons* tab, so leave `strokeWidth` at its default. The user can also override a single tile's background, border, radius,
+blur, shadow, opacity and title visibility from the tile's settings ("Look") — that is applied to the tile frame by the host,
+so plugins don't need to do anything.
+
 Your widget fills the tile's content area (below the optional title bar). Use `size.width/height` for
 responsive decisions — a tile may be 2×1 or 12×8.
 
