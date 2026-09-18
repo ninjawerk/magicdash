@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Installed plugins live in a git-ignored folder, which Tailwind's automatic source detection skips. */
+@source '../../plugins';
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
 
