@@ -63,6 +63,7 @@ Installed with one click from *Admin → Plugins → Browse catalog*. Each lives
 | 🏡 [Home Assistant cards](https://github.com/ninjawerk/magicdash-ha-cards) | Camera, thermostat with controls, media player with album art, sensor history. |
 | 🌬️ [Air quality & pollen](https://github.com/ninjawerk/magicdash-air-quality) | AQI, particulates, ozone, NO₂ and pollen for your location. |
 | 📷 [Photo album](https://github.com/ninjawerk/magicdash-photo-album) | Your own photos from an Immich album or a Nextcloud / WebDAV folder. |
+| 🌐 [Web app](https://github.com/ninjawerk/magicdash-web-app) | Any web page or your own kiosk app in a tile: in-tile browsing, customisable back button, full screen, page rotation, and a JavaScript bridge (toasts, alerts, screens, weather, storage). |
 | ⏳ [Countdown](https://github.com/ninjawerk/magicdash-countdown) | Days, hours and minutes until a date, with repeat rules. The plugin from the tutorial. |
 
 ## Quick start (development)
